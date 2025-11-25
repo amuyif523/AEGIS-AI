@@ -10,6 +10,7 @@ from datetime import timedelta
 from . import models, schemas, database, auth
 from .ai_engine import ai_engine
 from .config import get_settings
+from .rbac import admin_roles, dispatcher_roles, require_roles
 
 settings = get_settings()
 logging.basicConfig(

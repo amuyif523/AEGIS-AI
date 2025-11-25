@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from . import models, database
 from .config import get_settings
+from . import models
 
 settings = get_settings()
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
@@ -68,6 +69,10 @@ def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme), db:
         return None
 
 def get_current_active_admin(current_user: models.User = Depends(get_current_user)):
-    if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=400, detail="The user doesn't have enough privileges")
+    if current_user.role not in [
+        models.UserRole.ADMIN,
+        models.UserRole.SYS_ADMIN,
+        models.UserRole.NATIONAL_SUPERVISOR,
+    ]:
+        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
     return current_user

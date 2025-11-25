@@ -10,8 +10,14 @@ class UserRole(str, enum.Enum):
     POLICE = "police"
     MEDICAL = "medical"
     FIRE = "fire"
-    ADMIN = "admin"
-    COMMAND = "command"
+    TRAFFIC = "traffic"
+    DISASTER = "disaster_coordinator"
+    MILITARY = "military_analyst"
+    NATIONAL_SUPERVISOR = "national_supervisor"
+    VERIFIER = "verifier"
+    SYS_ADMIN = "sys_admin"
+    ADMIN = "admin"  # legacy/backwards-compatible
+    COMMAND = "command"  # legacy/backwards-compatible
 
 class IncidentType(str, enum.Enum):
     CRIME = "crime"
