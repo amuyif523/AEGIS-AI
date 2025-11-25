@@ -1,58 +1,64 @@
 # AEGIS-AI: Geospatial Incident Intelligence Platform
 
 ## Overview
-AEGIS-AI is a next-generation, AI-driven geospatial incident intelligence and rapid response platform designed for the Horn of Africa (specifically Ethiopia). It provides real-time visibility into incidents such as accidents, crimes, floods, and hazards using AI-enhanced geospatial intelligence and crowdsourced verification.
-
-## Features
-- **Geospatial Intelligence:** Real-time mapping with layer-based filtering.
-- **AI Severity Classification:** Automated severity tagging (Low, Medium, Critical).
-- **Crowdsourced Reporting:** Citizen-led incident reporting with verification.
-- **Offline-First Architecture:** Optimized for low-bandwidth environments.
+AEGIS-AI is a national-scale, AI-assisted incident intelligence and rapid response stack. It currently ships a FastAPI backend with role-based auth, incidents/units/alerts, a React + Leaflet dashboard, and WebSocket-driven refresh hooks.
 
 ## Tech Stack
-- **Frontend:** React 18, Vite, Tailwind CSS, Lucide React
-- **Backend (Planned):** Python (FastAPI), PostgreSQL (PostGIS)
-- **Real-time:** Socket.io
+- **Backend:** FastAPI, SQLAlchemy, Postgres/PostGIS (dev fallback: SQLite), Alembic migrations, JWT auth
+- **Frontend:** React 18, Vite, Tailwind, Leaflet
+- **Tooling:** Docker Compose profiles (dev/prod), pytest + TestClient, Vitest + RTL
 
-## Getting Started
-
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Installation
-1. Clone the repository (if applicable).
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Development
-To start the development server:
+## Setup
+1) Copy env template and adjust credentials/URLs:
 ```bash
+cp .env.example .env
+```
+
+2) Backend dependencies:
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+3) Frontend dependencies:
+```bash
+cd frontend
+npm install
+```
+
+## Database & Migrations
+- Configure `DATABASE_URL` in `.env` (default Postgres, falls back to local SQLite).
+- Run migrations:
+```bash
+cd backend
+alembic upgrade head
+```
+- Optional seed (dev convenience):
+```bash
+python -m backend.seed_data
+```
+
+## Running
+- **Backend (local):**
+```bash
+cd backend
+uvicorn main:app --reload
+```
+- **Frontend (local):**
+```bash
+cd frontend
 npm run dev
 ```
-Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
+- **Docker Compose:**
+  - Dev profile (mounted code, reload): `docker compose --profile dev up --build`
+  - Prod profile (no mounts): `docker compose --profile prod up --build`
 
-### Build
-To build for production:
-```bash
-npm run build
-```
+## Testing
+- Backend: `cd backend && pytest`
+- Frontend: `cd frontend && npm run test`
 
 ## Project Structure
-- `src/`: Source code
-  - `App.jsx`: Main application component
-  - `main.jsx`: Entry point
-  - `index.css`: Global styles (Tailwind directives)
-- `public/`: Static assets
-- `index.html`: HTML entry point
-- `vite.config.js`: Vite configuration
-- `tailwind.config.js`: Tailwind configuration
-
-## Roadmap
-- [x] Project Scaffolding (Vite + React)
-- [x] Interactive Map Integration (Leaflet/Mapbox)
-- [ ] Backend API Setup (FastAPI)
-- [ ] Database Schema Design (PostgreSQL)
-- [ ] Real-time WebSocket Integration
+- `backend/` – API, models, auth, Alembic migrations (`alembic/`), tests
+- `frontend/` – React app, components, Vitest setup
+- `docker-compose.yml` – dev/prod profiles with PostGIS
+- `.env.example` – configuration template

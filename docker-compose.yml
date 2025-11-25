@@ -3,18 +3,45 @@ version: '3.8'
 services:
   # --- Backend API (FastAPI) ---
   backend:
+    profiles: ["dev"]
     build: ./backend
     container_name: aegis_backend
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://aegis_user:aegis_pass@db:5432/aegis_db
+      - DATABASE_URL=${DATABASE_URL:-postgresql://aegis_user:aegis_pass@db:5432/aegis_db}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - aegis_network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import requests;requests.get('http://localhost:8000/health')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend-prod:
+    profiles: ["prod"]
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://aegis_user:aegis_pass@db:5432/aegis_db}
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - aegis_network
+    restart: unless-stopped
 
   # --- Database (PostgreSQL + PostGIS) ---
   db:
@@ -28,6 +55,11 @@ services:
       - POSTGRES_DB=aegis_db
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
       - aegis_network
 
