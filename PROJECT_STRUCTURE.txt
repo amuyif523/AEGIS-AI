@@ -1,0 +1,42 @@
+aegis-ai-platform/
+├── .github/                   # CI/CD workflows
+├── apps/
+│   ├── web/                   # Main React/Next.js Application (Public + Dashboards)
+│   │   ├── src/
+│   │   │   ├── components/    # Shared UI components (Buttons, Cards, Inputs)
+│   │   │   ├── features/      # Feature-based modules
+│   │   │   │   ├── map/       # Map logic, layers, markers
+│   │   │   │   ├── reporting/ # Incident reporting forms
+│   │   │   │   ├── dashboard/ # Agency specific views
+│   │   │   │   └── auth/      # Login/Signup logic
+│   │   │   ├── hooks/         # Custom React hooks (useLocation, useSocket)
+│   │   │   ├── services/      # API clients
+│   │   │   └── utils/         # Helper functions
+│   │   └── public/            # Static assets
+│   │
+│   ├── mobile/                # React Native App (for field responders/citizens)
+│   │
+│   └── api/                   # Backend API (Python/FastAPI or Node/Express)
+│       ├── app/
+│       │   ├── core/          # Config, security, database connection
+│       │   ├── models/        # Database schemas (SQLAlchemy/Prisma)
+│       │   ├── api/           # API Routes (v1/incidents, v1/users)
+│       │   ├── services/      # Business logic
+│       │   │   ├── ai_service.py      # Classification & Triage logic
+│       │   │   ├── geo_service.py     # Spatial queries
+│       │   │   └── notification.py    # SMS/Email dispatch
+│       │   └── main.py        # Entry point
+│       └── tests/             # Backend tests
+│
+├── packages/                  # Shared libraries (if using monorepo)
+│   ├── ui/                    # Shared UI component library
+│   └── config/                # Shared configurations (ESLint, TSConfig)
+│
+├── infrastructure/            # Docker, Kubernetes, Terraform configs
+│   ├── docker-compose.yml
+│   └── k8s/
+│
+├── data/                      # Seed data, GeoJSON files for Ethiopian cities
+│
+├── ROADMAP.md                 # Development plan
+└── README.md                  # Project documentation

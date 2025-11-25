@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # --- Backend API (FastAPI) ---
+  backend:
+    build: ./backend
+    container_name: aegis_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://aegis_user:aegis_pass@db:5432/aegis_db
+    depends_on:
+      - db
+    networks:
+      - aegis_network
+
+  # --- Database (PostgreSQL + PostGIS) ---
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: aegis_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=aegis_user
+      - POSTGRES_PASSWORD=aegis_pass
+      - POSTGRES_DB=aegis_db
+    ports:
+      - "5432:5432"
+    networks:
+      - aegis_network
+
+  # --- Frontend (Vite Dev Server) ---
+  # Note: Usually we run frontend locally for dev, but this is for full stack orchestration
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+
+networks:
+  aegis_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
