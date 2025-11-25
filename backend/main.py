@@ -148,7 +148,7 @@ def create_unit(unit: schemas.UnitCreate, db: Session = Depends(get_db), current
 @app.patch("/units/{unit_id}", response_model=schemas.UnitResponse)
 def update_unit(unit_id: int, unit_update: schemas.UnitUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Only Admin/Command or the unit itself (future) can update status
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.COMMAND]:
+    if current_user.role not in admin_roles + [models.UserRole.DISASTER, models.UserRole.TRAFFIC]:
         raise HTTPException(status_code=403, detail="Not authorized to update unit status")
 
     db_unit = db.query(models.Unit).filter(models.Unit.id == unit_id).first()
@@ -231,7 +231,7 @@ def read_incidents(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
 @app.patch("/incidents/{incident_id}", response_model=schemas.IncidentResponse)
 def update_incident_status(incident_id: int, status: models.IncidentStatus, background_tasks: BackgroundTasks, unit_id: int = None, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Check permissions
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.COMMAND, models.UserRole.POLICE, models.UserRole.FIRE, models.UserRole.MEDICAL]:
+    if current_user.role not in dispatcher_roles:
         raise HTTPException(status_code=403, detail="Not authorized to update incident status")
 
     incident = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
@@ -276,8 +276,8 @@ def read_alerts(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
 
 @app.post("/alerts/", response_model=schemas.AlertResponse)
 def create_alert(alert: schemas.AlertCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    # Only Admin/Command can broadcast alerts
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.COMMAND]:
+    # Only senior command roles can broadcast alerts
+    if current_user.role not in admin_roles:
         raise HTTPException(status_code=403, detail="Not authorized to broadcast alerts")
     
     db_alert = models.Alert(**alert.model_dump())

@@ -1,4 +1,20 @@
 from backend import models
+from backend.auth import get_password_hash
+from backend.database import get_db
+from backend.main import app
+
+
+def create_user(db, username: str, role: models.UserRole, password: str = "testpass"):
+    user = models.User(
+        username=username,
+        email=f"{username}@example.com",
+        hashed_password=get_password_hash(password),
+        role=role,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def test_health_endpoint(client):
@@ -31,3 +47,37 @@ def test_incident_lifecycle(client):
     assert list_resp.status_code == 200
     ids = [i["id"] for i in list_resp.json()]
     assert incident["id"] in ids
+
+
+def test_rbac_blocks_dispatch_for_citizen(client):
+    # Create a citizen and login
+    db = next(get_db())
+    citizen = create_user(db, "citizen1", models.UserRole.CITIZEN)
+    token_resp = client.post(
+        "/token",
+        data={"username": citizen.username, "password": "testpass"},
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+    assert token_resp.status_code == 200
+    token = token_resp.json()["access_token"]
+
+    # Create incident anonymously
+    incident_resp = client.post(
+        "/incidents/",
+        json={
+            "title": "Blocked Road",
+            "description": "Traffic jam",
+            "latitude": 1.0,
+            "longitude": 1.0,
+            "incident_type": models.IncidentType.ACCIDENT.value,
+            "severity": models.IncidentSeverity.MEDIUM.value,
+        },
+    )
+    incident_id = incident_resp.json()["id"]
+
+    # Citizen tries to update status -> forbidden
+    update_resp = client.patch(
+        f"/incidents/{incident_id}?status=resolved",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert update_resp.status_code == 403

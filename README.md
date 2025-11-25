@@ -53,6 +53,11 @@ npm run dev
   - Dev profile (mounted code, reload): `docker compose --profile dev up --build`
   - Prod profile (no mounts): `docker compose --profile prod up --build`
 
+## RBAC (Sprint 1 expansion)
+- Core roles: `citizen`, `verifier`, `police`, `medical`, `fire`, `traffic`, `disaster_coordinator`, `military_analyst`, `national_supervisor`, `command` (legacy), `admin` (legacy), `sys_admin`.
+- Admin-capable (user/unit management, alerts): `sys_admin`, `national_supervisor`, `admin`, `command`.
+- Dispatch-capable (incident status/assign): admin-capable plus `police`, `fire`, `medical`, `traffic`, `disaster_coordinator`, `military_analyst`.
+
 ## Testing
 - Backend: `cd backend && pytest`
 - Frontend: `cd frontend && npm run test`
