@@ -1,11 +1,13 @@
 from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
+from .config import get_settings
+
+settings = get_settings()
 
 # Default to a local sqlite file if no DB URL is provided (for easy local testing without Docker)
 # In production/docker, this env var will be set to the Postgres URL
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./aegis_local.db")
+SQLALCHEMY_DATABASE_URL = settings.database_url
 
 # If using SQLite, we need specific connect args
 connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}

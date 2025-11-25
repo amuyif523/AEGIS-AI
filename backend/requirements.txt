@@ -6,3 +6,6 @@ geoalchemy2==0.14.3
 pydantic==2.6.0
 python-dotenv==1.0.1
 requests==2.31.0
+alembic==1.13.1
+pytest==8.2.0
+httpx==0.26.0

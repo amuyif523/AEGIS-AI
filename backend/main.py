@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -8,6 +9,14 @@ from datetime import timedelta
 
 from . import models, schemas, database, auth
 from .ai_engine import ai_engine
+from .config import get_settings
+
+settings = get_settings()
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("aegis")
 
 # Create Database Tables (Simple auto-migration for MVP)
 models.Base.metadata.create_all(bind=database.engine)
@@ -317,5 +326,15 @@ def get_stats(db: Session = Depends(get_db)):
     }
 
 @app.get("/health")
-def health_check():
-    return {"status": "healthy", "database": "connected"}
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute("SELECT 1")
+        db_status = "connected"
+    except Exception as exc:
+        logger.exception("Database health check failed")
+        db_status = f"error: {exc}"
+    return {
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
+        "environment": settings.environment
+    }
