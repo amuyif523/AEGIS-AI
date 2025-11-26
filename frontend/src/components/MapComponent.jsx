@@ -138,6 +138,11 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
       const response = await fetch('http://localhost:8000/layers/base');
       if (response.ok) {
         const data = await response.json();
+        // Fetch forecast overlays
+        const forecastRes = await fetch('http://localhost:8000/forecast');
+        if (forecastRes.ok) {
+            data.forecast = await forecastRes.json();
+        }
         setLayers(data);
         localStorage.setItem('base_layers', JSON.stringify(data));
       }
@@ -368,6 +373,33 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
           >
             <Popup>Police District: {d.name}</Popup>
           </Rectangle>
+        ))}
+
+        {/* Forecast overlays (crime/flood/fire/unrest/crowd) */}
+        {layers?.forecast?.crime_hotspots?.map((c, idx) => (
+          <CircleMarker key={`crimehot-${idx}`} center={[c.lat, c.lng]} radius={8} pathOptions={{ color: 'red' }}>
+            <Popup>{c.label} | Risk {Math.round(c.score * 100)}%</Popup>
+          </CircleMarker>
+        ))}
+        {layers?.forecast?.flood_risk?.map((z, idx) => (
+          <Rectangle key={`flood-${idx}`} bounds={[[z.bbox[1], z.bbox[0]], [z.bbox[3], z.bbox[2]]]} pathOptions={{ color: 'blue', weight: 1, fillOpacity: 0.05 }}>
+            <Popup>{z.label} | Risk {Math.round(z.score * 100)}%</Popup>
+          </Rectangle>
+        ))}
+        {layers?.forecast?.fire_risk?.map((z, idx) => (
+          <Rectangle key={`fire-${idx}`} bounds={[[z.bbox[1], z.bbox[0]], [z.bbox[3], z.bbox[2]]]} pathOptions={{ color: 'orange', weight: 1, fillOpacity: 0.05 }}>
+            <Popup>{z.label} | Risk {Math.round(z.score * 100)}%</Popup>
+          </Rectangle>
+        ))}
+        {layers?.forecast?.unrest?.map((u, idx) => (
+          <CircleMarker key={`unrest-${idx}`} center={[u.lat, u.lng]} radius={7} pathOptions={{ color: 'purple' }}>
+            <Popup>{u.label} | Risk {Math.round(u.score * 100)}%</Popup>
+          </CircleMarker>
+        ))}
+        {layers?.forecast?.crowd_density?.map((c, idx) => (
+          <Circle key={`crowd-${idx}`} center={[c.lat, c.lng]} radius={200} pathOptions={{ color: 'green', fillOpacity: 0.1 }}>
+            <Popup>{c.label} | Est {c.count} people</Popup>
+          </Circle>
         ))}
 
         {filteredIncidents.map((incident) => (

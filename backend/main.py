@@ -12,6 +12,7 @@ from .ai_engine import ai_engine
 from .config import get_settings
 from .rbac import admin_roles, dispatcher_roles, require_roles
 from .layers import BASE_LAYERS
+from .predictions import forecast
 from .database import SQLALCHEMY_DATABASE_URL
 from .routing import haversine
 from . import models, schemas, database, auth
@@ -673,6 +674,10 @@ def health_check(db: Session = Depends(get_db)):
 @app.get("/layers/base")
 def base_layers():
     return BASE_LAYERS
+
+@app.get("/forecast")
+def forecast_layers():
+    return forecast()
 
 @app.get("/command/overview")
 def command_overview(db: Session = Depends(get_db)):

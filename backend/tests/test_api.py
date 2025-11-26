@@ -281,6 +281,13 @@ def test_analytics_export(client):
     assert "text/csv" in csv_resp.headers.get("content-type", "")
 
 
+def test_forecast_endpoint(client):
+    resp = client.get("/forecast")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "crime_hotspots" in data
+
+
 def test_mission_and_annotation_flow(client):
     db = next(get_db())
     admin = create_user(db, "missionadmin", models.UserRole.SYS_ADMIN)

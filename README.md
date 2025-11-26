@@ -72,6 +72,7 @@ npm run dev
 - Missions & collaboration: mission threads with incident grouping (`/missions`), map annotations (`/annotations`) for roadblocks/safe zones/staging, attachments/comments per incident.
 - Analytics: `/analytics/stats` includes type/7d/30d and avg dispatch/resolution; `/analytics/export` CSV; dashboard shows distributions and time/performance cards.
 - Offline & localization: PWA runtime caching for map tiles, locale toggle (EN/AM) with translated labels; cached incidents/layers on frontend.
+- Forecasting (stub): `/forecast` returns heuristic crime/fire/flood/unrest/crowd overlays for demo/academic use.
 
 ## Testing
 - Backend: `cd backend && pytest`
