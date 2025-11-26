@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, Polyline,
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useLocale } from '../contexts/LocaleContext';
 
 // Fix for default marker icons in React-Leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -91,6 +92,7 @@ const CommentSection = ({ incidentId, token }) => {
 };
 
 const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'all' }) => {
+  const { t } = useLocale();
   const position = [9.005401, 38.763611]; // Addis Ababa
   const [incidents, setIncidents] = useState(() => {
       const saved = localStorage.getItem('incidents');
@@ -229,7 +231,7 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
       {isOffline && (
         <div className="absolute top-4 right-4 z-[1000] bg-red-600 text-white px-3 py-1 rounded shadow-lg text-xs font-bold flex items-center gap-2 animate-pulse">
           <span className="w-2 h-2 bg-white rounded-full"></span>
-          OFFLINE MODE
+          {t('offline')}
         </div>
       )}
 
@@ -242,7 +244,7 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
       </div>
       {/* Filters / Controls */}
       <div className="absolute top-4 left-4 z-[1000] bg-[#161B22] border border-slate-700 rounded p-3 space-y-2 text-xs text-slate-200">
-        <div className="font-bold text-white text-sm">Filters</div>
+        <div className="font-bold text-white text-sm">{t('filters')}</div>
         <div className="flex flex-wrap gap-2">
           {['critical','high','medium','low'].map(level => (
             <label key={level} className="flex items-center gap-1">
@@ -258,7 +260,7 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
           ))}
         </div>
         <div>
-          <label className="block mb-1">Type</label>
+          <label className="block mb-1">{t('type')}</label>
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
@@ -271,7 +273,7 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
           </select>
         </div>
         <div>
-          <label className="block mb-1">Timeline (hours)</label>
+          <label className="block mb-1">{t('timeline')} ({t('hours')})</label>
           <input
             type="range"
             min="1"
@@ -282,7 +284,7 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
           <div className="text-[10px] text-slate-400">{timelineHours}h</div>
         </div>
         <div>
-          <label className="block mb-1">Proximity Radius (km)</label>
+          <label className="block mb-1">{t('proximity')} (km)</label>
           <input
             type="range"
             min="0"
@@ -290,7 +292,7 @@ const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'al
             value={radiusKm}
             onChange={(e) => setRadiusKm(Number(e.target.value))}
           />
-          <div className="text-[10px] text-slate-400">{radiusKm === 0 ? 'Disabled' : `${radiusKm} km`}</div>
+          <div className="text-[10px] text-slate-400">{radiusKm === 0 ? t('disabled') : `${radiusKm} km`}</div>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import ReportModal from './components/ReportModal';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import { WebSocketProvider } from './contexts/WebSocketContext';
+import { LocaleProvider } from './contexts/LocaleContext';
 import { 
   Shield, Map, AlertTriangle, Brain, Activity, 
   Layers, Lock, Globe, ChevronRight, Search, 
@@ -67,14 +68,17 @@ const AegisLanding = () => {
   if (view === 'dashboard') {
     // Allow public access (token can be null)
     return (
-      <WebSocketProvider clientId={Math.floor(Math.random() * 1000000)}>
-        <Dashboard onLogout={handleLogout} token={token} username={username} initialRole={role} />
-      </WebSocketProvider>
+      <LocaleProvider>
+        <WebSocketProvider clientId={Math.floor(Math.random() * 1000000)}>
+          <Dashboard onLogout={handleLogout} token={token} username={username} initialRole={role} />
+        </WebSocketProvider>
+      </LocaleProvider>
     );
   }
 
   // --- LANDING PAGE VIEW ---
   return (
+    <LocaleProvider>
     <WebSocketProvider clientId={Math.floor(Math.random() * 1000000)}>
     <div className="min-h-screen">
       {/* --- Navigation --- */}

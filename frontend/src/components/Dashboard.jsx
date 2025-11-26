@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, Activity, Users, Radio, LogOut, Bell, BarChart, HelpCircle, X } from 'lucide-react';
 import MapComponent from './MapComponent';
 import { useWebSocket } from '../contexts/WebSocketContext';
+import { useLocale } from '../contexts/LocaleContext';
 
 const BootSequence = ({ onComplete }) => {
   const [step, setStep] = useState(0);
@@ -146,6 +147,7 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
       const saved = localStorage.getItem('dashboard_analytics');
       return saved ? JSON.parse(saved) : null;
   });
+  const { locale, setLocale } = useLocale();
   const [alerts, setAlerts] = useState(() => {
       const saved = localStorage.getItem('dashboard_alerts');
       return saved ? JSON.parse(saved) : [];
@@ -362,6 +364,15 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
           </div>
 
           <div className="flex items-center gap-4 relative">
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value)}
+              className="bg-[#0A0F1A] border border-slate-700 text-slate-200 text-xs px-2 py-1 rounded"
+              aria-label="Language"
+            >
+              <option value="en">EN</option>
+              <option value="am">AM</option>
+            </select>
             <button 
               className="p-2 text-slate-400 hover:text-white relative"
               onClick={() => setShowAlertsDropdown(!showAlertsDropdown)}

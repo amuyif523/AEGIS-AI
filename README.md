@@ -71,6 +71,7 @@ npm run dev
 - Command & alerts: `/command/overview` for consolidated status; alerts support geo-targeting fields; proximity alert creation at `/alerts/proximity` for incident/lat-lng radius.
 - Missions & collaboration: mission threads with incident grouping (`/missions`), map annotations (`/annotations`) for roadblocks/safe zones/staging, attachments/comments per incident.
 - Analytics: `/analytics/stats` includes type/7d/30d and avg dispatch/resolution; `/analytics/export` CSV; dashboard shows distributions and time/performance cards.
+- Offline & localization: PWA runtime caching for map tiles, locale toggle (EN/AM) with translated labels; cached incidents/layers on frontend.
 
 ## Testing
 - Backend: `cd backend && pytest`
