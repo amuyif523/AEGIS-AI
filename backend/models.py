@@ -2,7 +2,10 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enu
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
-from .database import Base
+from .database import Base, SQLALCHEMY_DATABASE_URL
+from geoalchemy2 import Geometry
+
+IS_POSTGRES = "postgresql" in SQLALCHEMY_DATABASE_URL
 
 # --- Enums for Standardization ---
 class UserRole(str, enum.Enum):
@@ -97,6 +100,7 @@ class Incident(Base):
     # Geospatial Data (Storing as floats for simplicity in MVP, PostGIS Geometry later)
     latitude = Column(Float)
     longitude = Column(Float)
+    geometry = Column(Geometry(geometry_type="POINT", srid=4326)) if IS_POSTGRES else Column(String, nullable=True)
     
     # Classification
     incident_type = Column(Enum(IncidentType), default=IncidentType.OTHER)

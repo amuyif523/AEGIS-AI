@@ -168,3 +168,37 @@ def test_dedup_sets_potential_duplicate(client):
     assert second_resp.status_code == 200
     body = second_resp.json()
     assert body["potential_duplicate_id"] == first_id
+
+
+def test_bbox_and_near_queries(client):
+    # Seed two incidents
+    client.post(
+        "/incidents/",
+        json={
+            "title": "BBox A",
+            "description": "Test",
+            "latitude": 1.0,
+            "longitude": 1.0,
+            "incident_type": models.IncidentType.FIRE.value,
+            "severity": models.IncidentSeverity.LOW.value,
+        },
+    )
+    client.post(
+        "/incidents/",
+        json={
+            "title": "BBox B",
+            "description": "Test",
+            "latitude": 10.0,
+            "longitude": 10.0,
+            "incident_type": models.IncidentType.FIRE.value,
+            "severity": models.IncidentSeverity.LOW.value,
+        },
+    )
+
+    bbox_resp = client.get("/incidents/bbox?min_lat=0&max_lat=2&min_lng=0&max_lng=2")
+    assert bbox_resp.status_code == 200
+    assert len(bbox_resp.json()) >= 1
+
+    near_resp = client.get("/incidents/near?lat=1&lng=1&radius_km=50")
+    assert near_resp.status_code == 200
+    assert len(near_resp.json()) >= 1

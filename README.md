@@ -64,6 +64,7 @@ npm run dev
 - Workflow: pending → verified → dispatched → resolved/false_alarm (invalid transitions rejected); merge/flag endpoints for verifiers/admins.
 - Attachments: incident attachments with url/media_type/metadata.
 - Routing: suggested_agencies, suggested_unit_type, routing_rationale populated from triage.
+- GIS queries: `/incidents/near` (radius km) and `/incidents/bbox`; geometry stored for Postgres with spatial index; static base layers at `/layers/base`.
 
 ## Testing
 - Backend: `cd backend && pytest`

@@ -11,6 +11,8 @@ from . import models, schemas, database, auth
 from .ai_engine import ai_engine
 from .config import get_settings
 from .rbac import admin_roles, dispatcher_roles, require_roles
+from .layers import BASE_LAYERS
+from .database import SQLALCHEMY_DATABASE_URL
 from .routing import suggest_agencies, suggest_unit_type, build_routing_rationale
 
 settings = get_settings()
@@ -255,6 +257,14 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
         status=models.IncidentStatus.PENDING
     )
     db_incident.routing_rationale = build_routing_rationale(db_incident, suggested_roles, suggested_unit)
+    # Set geometry for Postgres; store WKT for others
+    try:
+        if "postgresql" in SQLALCHEMY_DATABASE_URL:
+            db_incident.geometry = f"SRID=4326;POINT({incident.longitude} {incident.latitude})"
+        else:
+            db_incident.geometry = f"POINT({incident.longitude} {incident.latitude})"
+    except Exception:
+        pass
     db.add(db_incident)
     db.commit()
     db.refresh(db_incident)
@@ -280,6 +290,36 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
 @app.get("/incidents/", response_model=List[schemas.IncidentResponse])
 def read_incidents(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     incidents = db.query(models.Incident).offset(skip).limit(limit).all()
+    return incidents
+
+@app.get("/incidents/near", response_model=List[schemas.IncidentResponse])
+def incidents_near(lat: float, lng: float, radius_km: float = 5.0, db: Session = Depends(get_db)):
+    if "postgresql" in SQLALCHEMY_DATABASE_URL:
+        query = db.query(models.Incident).filter(
+            text(f"ST_DWithin(geometry::geography, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :meters)")
+        ).params(lat=lat, lng=lng, meters=radius_km * 1000)
+        return query.all()
+    else:
+        # Fallback: rough haversine approximation
+        def haversine(lat1, lon1, lat2, lon2):
+            from math import radians, sin, cos, sqrt, atan2
+            R = 6371.0
+            dlat = radians(lat2 - lat1)
+            dlon = radians(lon2 - lon1)
+            a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+            c = 2 * atan2(sqrt(a), sqrt(1 - a))
+            return R * c
+        all_incidents = db.query(models.Incident).all()
+        return [i for i in all_incidents if haversine(lat, lng, i.latitude, i.longitude) <= radius_km]
+
+@app.get("/incidents/bbox", response_model=List[schemas.IncidentResponse])
+def incidents_bbox(min_lat: float, min_lng: float, max_lat: float, max_lng: float, db: Session = Depends(get_db)):
+    incidents = db.query(models.Incident).filter(
+        models.Incident.latitude >= min_lat,
+        models.Incident.latitude <= max_lat,
+        models.Incident.longitude >= min_lng,
+        models.Incident.longitude <= max_lng
+    ).all()
     return incidents
 
 @app.patch("/incidents/{incident_id}", response_model=schemas.IncidentResponse)
@@ -476,3 +516,7 @@ def health_check(db: Session = Depends(get_db)):
         "database": db_status,
         "environment": settings.environment
     }
+
+@app.get("/layers/base")
+def base_layers():
+    return BASE_LAYERS
