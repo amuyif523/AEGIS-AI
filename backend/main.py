@@ -607,7 +607,8 @@ def read_comments(incident_id: int, db: Session = Depends(get_db)):
 @app.get("/analytics/stats")
 def get_stats(db: Session = Depends(get_db)):
     total_incidents = db.query(models.Incident).count()
-    
+    incidents = db.query(models.Incident).all()
+
     # Count by status
     status_counts = db.query(models.Incident.status, func.count(models.Incident.id)).group_by(models.Incident.status).all()
     status_data = {status: count for status, count in status_counts}
@@ -615,12 +616,45 @@ def get_stats(db: Session = Depends(get_db)):
     # Count by severity
     severity_counts = db.query(models.Incident.severity, func.count(models.Incident.id)).group_by(models.Incident.severity).all()
     severity_data = {severity: count for severity, count in severity_counts}
+
+    # Count by type
+    type_counts = db.query(models.Incident.incident_type, func.count(models.Incident.id)).group_by(models.Incident.incident_type).all()
+    type_data = {t: count for t, count in type_counts}
+
+    now = datetime.utcnow()
+    last_7 = len([i for i in incidents if i.created_at and (now - i.created_at).days < 7])
+    last_30 = len([i for i in incidents if i.created_at and (now - i.created_at).days < 30])
+
+    # Response time stats
+    dispatch_times = []
+    resolution_times = []
+    for inc in incidents:
+        if inc.dispatched_at and inc.created_at:
+            dispatch_times.append((inc.dispatched_at - inc.created_at).total_seconds() / 60.0)
+        if inc.resolved_at and inc.created_at:
+            resolution_times.append((inc.resolved_at - inc.created_at).total_seconds() / 60.0)
+    avg_dispatch = sum(dispatch_times) / len(dispatch_times) if dispatch_times else None
+    avg_resolution = sum(resolution_times) / len(resolution_times) if resolution_times else None
     
     return {
         "total_incidents": total_incidents,
         "by_status": status_data,
-        "by_severity": severity_data
+        "by_severity": severity_data,
+        "by_type": type_data,
+        "last_7_days": last_7,
+        "last_30_days": last_30,
+        "avg_dispatch_minutes": avg_dispatch,
+        "avg_resolution_minutes": avg_resolution,
     }
+
+@app.get("/analytics/export")
+def export_incidents_csv(db: Session = Depends(get_db)):
+    incidents = db.query(models.Incident).all()
+    lines = ["id,title,type,severity,status,created_at,latitude,longitude"]
+    for inc in incidents:
+        lines.append(f"{inc.id},{inc.title},{inc.incident_type.value},{inc.severity.value},{inc.status.value},{inc.created_at},{inc.latitude},{inc.longitude}")
+    csv_data = "\n".join(lines)
+    return Response(content=csv_data, media_type="text/csv")
 
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):

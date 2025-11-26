@@ -624,7 +624,7 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-6 mb-6">
                     <div className="bg-[#161B22] p-6 rounded border border-slate-800">
                         <h3 className="font-bold mb-4">Incidents by Severity</h3>
                         <div className="space-y-3">
@@ -661,6 +661,41 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-[#161B22] p-6 rounded border border-slate-800">
+                        <h3 className="font-bold mb-4">Incidents by Type</h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {Object.entries(analyticsData.by_type).map(([type, count]) => (
+                                <div key={type} className="flex justify-between text-sm">
+                                    <span className="capitalize text-slate-300">{type}</span>
+                                    <span className="font-mono text-slate-400">{count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="bg-[#161B22] p-6 rounded border border-slate-800">
+                        <h3 className="font-bold mb-4">Time & Performance</h3>
+                        <div className="text-sm text-slate-300 space-y-2">
+                            <div className="flex justify-between">
+                                <span>Last 7 days</span>
+                                <span className="font-mono">{analyticsData.last_7_days}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Last 30 days</span>
+                                <span className="font-mono">{analyticsData.last_30_days}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Avg dispatch</span>
+                                <span className="font-mono">{analyticsData.avg_dispatch_minutes ? `${analyticsData.avg_dispatch_minutes.toFixed(1)} min` : 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Avg resolution</span>
+                                <span className="font-mono">{analyticsData.avg_resolution_minutes ? `${analyticsData.avg_resolution_minutes.toFixed(1)} min` : 'N/A'}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

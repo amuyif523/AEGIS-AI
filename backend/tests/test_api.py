@@ -275,6 +275,12 @@ def test_command_overview_and_proximity_alert_creation(client):
     assert alert_resp.status_code == 200
 
 
+def test_analytics_export(client):
+    csv_resp = client.get("/analytics/export")
+    assert csv_resp.status_code == 200
+    assert "text/csv" in csv_resp.headers.get("content-type", "")
+
+
 def test_mission_and_annotation_flow(client):
     db = next(get_db())
     admin = create_user(db, "missionadmin", models.UserRole.SYS_ADMIN)
