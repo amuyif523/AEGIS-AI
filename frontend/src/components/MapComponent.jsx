@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useWebSocket } from '../contexts/WebSocketContext';
@@ -96,11 +96,19 @@ const MapComponent = ({ adminMode = false, token = null }) => {
       const saved = localStorage.getItem('incidents');
       return saved ? JSON.parse(saved) : [];
   });
+  const [layers, setLayers] = useState(() => {
+      const saved = localStorage.getItem('base_layers');
+      return saved ? JSON.parse(saved) : null;
+  });
   const [units, setUnits] = useState([]);
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
   const [isOffline, setIsOffline] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false); // Mock Heatmap Toggle
+  const [severityFilter, setSeverityFilter] = useState(['critical', 'high', 'medium', 'low']);
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [radiusKm, setRadiusKm] = useState(0); // 0 disables buffer
+  const [timelineHours, setTimelineHours] = useState(72); // last 72h default
   const { lastMessage } = useWebSocket();
 
   // Fetch incidents from Backend API
@@ -116,6 +124,19 @@ const MapComponent = ({ adminMode = false, token = null }) => {
     } catch (error) {
       console.error("Failed to fetch incidents:", error);
       setIsOffline(true);
+    }
+  }, []);
+  // Fetch base layers
+  const fetchLayers = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:8000/layers/base');
+      if (response.ok) {
+        const data = await response.json();
+        setLayers(data);
+        localStorage.setItem('base_layers', JSON.stringify(data));
+      }
+    } catch (err) {
+      console.error("Failed to fetch base layers:", err);
     }
   }, []);
 
@@ -168,13 +189,35 @@ const MapComponent = ({ adminMode = false, token = null }) => {
   };
   useEffect(() => {
     fetchIncidents();
-  }, [fetchIncidents]);
+    fetchLayers();
+  }, [fetchIncidents, fetchLayers]);
 
   useEffect(() => {
     if (lastMessage === "refresh_incidents") {
         fetchIncidents();
     }
   }, [lastMessage, fetchIncidents]);
+
+  // Derived incidents with filters
+  const filteredIncidents = useMemo(() => {
+    const now = new Date();
+    return incidents.filter((inc) => {
+      if (!severityFilter.includes(inc.severity)) return false;
+      if (typeFilter !== 'all' && inc.incident_type !== typeFilter) return false;
+      if (timelineHours < 999) {
+        const created = inc.created_at ? new Date(inc.created_at) : now;
+        const diffHrs = (now - created) / (1000 * 60 * 60);
+        if (diffHrs > timelineHours) return false;
+      }
+      if (radiusKm > 0) {
+        const dlat = inc.latitude - position[0];
+        const dlon = inc.longitude - position[1];
+        const distApprox = Math.sqrt(dlat * dlat + dlon * dlon) * 111; // rough km approximation
+        if (distApprox > radiusKm) return false;
+      }
+      return true;
+    });
+  }, [incidents, severityFilter, typeFilter, timelineHours, radiusKm, position]);
 
   return (
     <div className="h-full w-full relative z-0">
@@ -192,6 +235,59 @@ const MapComponent = ({ adminMode = false, token = null }) => {
               <input type="checkbox" checked={showHeatmap} onChange={() => setShowHeatmap(!showHeatmap)} />
               <span>Enable Heatmap Overlay</span>
           </label>
+      </div>
+      {/* Filters / Controls */}
+      <div className="absolute top-4 left-4 z-[1000] bg-[#161B22] border border-slate-700 rounded p-3 space-y-2 text-xs text-slate-200">
+        <div className="font-bold text-white text-sm">Filters</div>
+        <div className="flex flex-wrap gap-2">
+          {['critical','high','medium','low'].map(level => (
+            <label key={level} className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={severityFilter.includes(level)}
+                onChange={() => {
+                  setSeverityFilter(prev => prev.includes(level) ? prev.filter(s => s !== level) : [...prev, level]);
+                }}
+              />
+              <span className="capitalize">{level}</span>
+            </label>
+          ))}
+        </div>
+        <div>
+          <label className="block mb-1">Type</label>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="bg-[#0A0F1A] border border-slate-700 rounded px-2 py-1 text-white text-xs"
+          >
+            <option value="all">All</option>
+            {Array.from(new Set(incidents.map(i => i.incident_type))).map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block mb-1">Timeline (hours)</label>
+          <input
+            type="range"
+            min="1"
+            max="168"
+            value={timelineHours}
+            onChange={(e) => setTimelineHours(Number(e.target.value))}
+          />
+          <div className="text-[10px] text-slate-400">{timelineHours}h</div>
+        </div>
+        <div>
+          <label className="block mb-1">Proximity Radius (km)</label>
+          <input
+            type="range"
+            min="0"
+            max="20"
+            value={radiusKm}
+            onChange={(e) => setRadiusKm(Number(e.target.value))}
+          />
+          <div className="text-[10px] text-slate-400">{radiusKm === 0 ? 'Disabled' : `${radiusKm} km`}</div>
+        </div>
       </div>
 
       {/* Dispatch Modal */}
@@ -239,14 +335,47 @@ const MapComponent = ({ adminMode = false, token = null }) => {
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         
-        {incidents.map((incident) => (
+        {/* Base Layers Overlays */}
+        {layers?.hospitals?.map((h, idx) => (
+          <CircleMarker key={`hospital-${idx}`} center={[h.lat, h.lng]} radius={5} pathOptions={{ color: 'cyan' }}>
+            <Popup>{h.name}</Popup>
+          </CircleMarker>
+        ))}
+        {layers?.hydrants?.map((h, idx) => (
+          <CircleMarker key={`hydrant-${idx}`} center={[h.lat, h.lng]} radius={4} pathOptions={{ color: 'blue' }}>
+            <Popup>Hydrant</Popup>
+          </CircleMarker>
+        ))}
+        {layers?.critical_infra?.map((c, idx) => (
+          <CircleMarker key={`infra-${idx}`} center={[c.lat, c.lng]} radius={6} pathOptions={{ color: 'orange' }}>
+            <Popup>{c.name}</Popup>
+          </CircleMarker>
+        ))}
+        {layers?.road_network?.map((r, idx) => (
+          <Polyline key={`road-${idx}`} positions={r.coords.map(([lng, lat]) => [lat, lng])} pathOptions={{ color: 'gray' }} />
+        ))}
+
+        {filteredIncidents.map((incident) => (
           <React.Fragment key={incident.id}>
-            <Marker position={[incident.latitude, incident.longitude]}>
+            <CircleMarker
+              center={[incident.latitude, incident.longitude]}
+              radius={8}
+              pathOptions={{
+                color: incident.severity === 'critical' ? '#ef4444' : incident.severity === 'high' ? '#f97316' : incident.severity === 'medium' ? '#eab308' : '#22c55e',
+                fillColor: '#0f172a',
+                fillOpacity: 0.8
+              }}
+            >
               <Popup>
-                <div className="text-slate-900 min-w-[150px]">
+                <div className="text-slate-900 min-w-[170px]">
                   <strong className="uppercase text-red-600 block mb-1">{incident.severity}: {incident.incident_type}</strong>
                   <div className="text-sm font-bold mb-1">{incident.title}</div>
                   <div className="text-xs text-slate-600">{incident.description}</div>
+                  <div className="text-[10px] text-slate-500 mt-2">
+                    AI Confidence: {(incident.ai_confidence * 100 || 0).toFixed(0)}%<br/>
+                    Escalation: {(incident.escalation_probability * 100 || 0).toFixed(0)}%<br/>
+                    Suggested: {(incident.suggested_unit_type || '').toUpperCase()}
+                  </div>
                   <div className="text-[10px] text-slate-400 mt-2 border-t pt-1 mb-2">
                     Status: <span className="font-bold">{incident.status}</span>
                     {incident.assigned_unit_id && <div className="text-blue-600 mt-1">Unit Assigned (ID: {incident.assigned_unit_id})</div>}
@@ -273,10 +402,9 @@ const MapComponent = ({ adminMode = false, token = null }) => {
                   )}
                 </div>
               </Popup>
-            </Marker>
-            {/* Mock Heatmap Circle */}
+            </CircleMarker>
             {showHeatmap && (
-                <L.Circle 
+                <Circle 
                     center={[incident.latitude, incident.longitude]} 
                     radius={500}
                     pathOptions={{ 
@@ -289,6 +417,10 @@ const MapComponent = ({ adminMode = false, token = null }) => {
             )}
           </React.Fragment>
         ))}
+
+        {radiusKm > 0 && (
+          <Circle center={position} radius={radiusKm * 1000} pathOptions={{ color: '#38bdf8', fillOpacity: 0.05 }} />
+        )}
 
       </MapContainer>
     </div>

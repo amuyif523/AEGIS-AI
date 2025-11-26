@@ -65,6 +65,7 @@ npm run dev
 - Attachments: incident attachments with url/media_type/metadata.
 - Routing: suggested_agencies, suggested_unit_type, routing_rationale populated from triage.
 - GIS queries: `/incidents/near` (radius km) and `/incidents/bbox`; geometry stored for Postgres with spatial index; static base layers at `/layers/base`.
+- Frontend map: severity/type filters, timeline slider, optional heatmap circles, proximity radius overlay, cached incidents/layers, base layer markers (hospitals/hydrants/infra/roads).
 
 ## Testing
 - Backend: `cd backend && pytest`
