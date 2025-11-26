@@ -59,7 +59,7 @@ npm run dev
 - Dispatch-capable (incident status/assign): admin-capable plus `police`, `fire`, `medical`, `traffic`, `disaster_coordinator`, `military_analyst`.
 
 ## Incident Model (current)
-- Fields: title, description, latitude/longitude, incident_type, severity, status, source, media_url/media_type, flag_reason, duplicate links.
+- Fields: title, description, latitude/longitude, incident_type, severity, status, source, media_url/media_type, flag_reason, duplicate links, AI signals (ai_confidence, escalation_probability, spread_risk, casualty_likelihood, crowd_size_estimate).
 - Audit: reporter_id, verified/dispatched/resolved timestamps and by-user IDs, assigned_unit_id, flagged_by.
 - Workflow: pending → verified → dispatched → resolved/false_alarm (invalid transitions rejected); merge/flag endpoints for verifiers/admins.
 - Attachments: incident attachments with url/media_type/metadata.

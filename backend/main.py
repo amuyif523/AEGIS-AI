@@ -211,6 +211,11 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
     
     # Apply AI Severity (Always trust AI for risk assessment in this MVP)
     incident_data['severity'] = ai_result['severity']
+    incident_data['ai_confidence'] = ai_result.get('confidence', 0.0)
+    incident_data['escalation_probability'] = ai_result.get('escalation_probability', 0.0)
+    incident_data['spread_risk'] = ai_result.get('spread_risk', 0.0)
+    incident_data['casualty_likelihood'] = ai_result.get('casualty_likelihood', 0.0)
+    incident_data['crowd_size_estimate'] = ai_result.get('crowd_size_estimate', 0)
     
     # Apply AI Type if the user selected "Other" or if we want to auto-classify
     # For now, let's prioritize the AI's classification if it found something specific

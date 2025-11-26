@@ -116,6 +116,11 @@ class Incident(Base):
     verified_at = Column(DateTime(timezone=True), nullable=True)
     dispatched_at = Column(DateTime(timezone=True), nullable=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
+    ai_confidence = Column(Float, nullable=True)
+    escalation_probability = Column(Float, nullable=True)
+    spread_risk = Column(Float, nullable=True)
+    casualty_likelihood = Column(Float, nullable=True)
+    crowd_size_estimate = Column(Integer, nullable=True)
     
     # Foreign Keys
     reporter_id = Column(Integer, ForeignKey("users.id"))

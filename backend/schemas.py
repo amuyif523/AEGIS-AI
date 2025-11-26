@@ -57,6 +57,11 @@ class IncidentBase(BaseModel):
     media_url: Optional[str] = None
     media_type: Optional[str] = None
     flag_reason: Optional[str] = None
+    ai_confidence: Optional[float] = 0.0
+    escalation_probability: Optional[float] = 0.0
+    spread_risk: Optional[float] = 0.0
+    casualty_likelihood: Optional[float] = 0.0
+    crowd_size_estimate: Optional[int] = 0
 
 class IncidentCreate(IncidentBase):
     pass

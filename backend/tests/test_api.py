@@ -44,6 +44,10 @@ def test_incident_lifecycle(client):
     assert incident["source"] == models.IncidentSource.CITIZEN.value
     assert incident["verified_by_id"] is None
     assert incident["resolved_by_id"] is None
+    assert "ai_confidence" in incident
+    assert "escalation_probability" in incident
+    assert "spread_risk" in incident
+    assert "casualty_likelihood" in incident
 
     # Listing incidents returns the new one
     list_resp = client.get("/incidents/")
