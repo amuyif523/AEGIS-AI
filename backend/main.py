@@ -14,6 +14,13 @@ from .rbac import admin_roles, dispatcher_roles, require_roles
 from .layers import BASE_LAYERS
 from .database import SQLALCHEMY_DATABASE_URL
 from .routing import haversine
+from . import models, schemas, database, auth
+from .ai_engine import ai_engine
+from .config import get_settings
+from .rbac import admin_roles, dispatcher_roles, require_roles
+from .layers import BASE_LAYERS
+from .database import SQLALCHEMY_DATABASE_URL
+from .routers import routing as routing_router
 from .routing import suggest_agencies, suggest_unit_type, build_routing_rationale
 from math import radians, sin, cos, sqrt, atan2
 from .routers import routing as routing_router
@@ -525,6 +532,70 @@ def create_attachment(incident_id: int, attachment: schemas.AttachmentCreate, db
     db.commit()
     db.refresh(db_attach)
     return db_attach
+
+# --- Missions ---
+@app.post("/missions/", response_model=schemas.MissionResponse)
+def create_mission(mission: schemas.MissionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.role not in admin_roles + [models.UserRole.COMMAND, models.UserRole.NATIONAL_SUPERVISOR]:
+        raise HTTPException(status_code=403, detail="Not authorized to create missions")
+    db_mission = models.MissionThread(
+        title=mission.title,
+        description=mission.description,
+        status=mission.status,
+        created_by_id=current_user.id
+    )
+    db.add(db_mission)
+    db.commit()
+    db.refresh(db_mission)
+    # Attach incidents if provided
+    if mission.incident_ids:
+        for inc_id in mission.incident_ids:
+            inc = db.query(models.Incident).filter(models.Incident.id == inc_id).first()
+            if inc:
+                inc.mission_id = db_mission.id
+        db.commit()
+    background_tasks = BackgroundTasks()
+    background_tasks.add_task(manager.broadcast, "refresh_incidents")
+    return db_mission
+
+@app.get("/missions/", response_model=List[schemas.MissionResponse])
+def list_missions(db: Session = Depends(get_db)):
+    return db.query(models.MissionThread).order_by(models.MissionThread.created_at.desc()).all()
+
+@app.post("/missions/{mission_id}/incidents/{incident_id}", response_model=schemas.MissionResponse)
+def add_incident_to_mission(mission_id: int, incident_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    mission = db.query(models.MissionThread).filter(models.MissionThread.id == mission_id).first()
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    incident = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    incident.mission_id = mission_id
+    db.commit()
+    return mission
+
+# --- Map Annotations ---
+@app.post("/annotations/", response_model=schemas.AnnotationResponse)
+def create_annotation(annotation: schemas.AnnotationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.role not in admin_roles + dispatcher_roles:
+        raise HTTPException(status_code=403, detail="Not authorized to add annotations")
+    db_ann = models.MapAnnotation(
+        annotation_type=annotation.annotation_type,
+        label=annotation.label,
+        latitude=annotation.latitude,
+        longitude=annotation.longitude,
+        radius_m=annotation.radius_m,
+        mission_id=annotation.mission_id,
+        created_by_id=current_user.id
+    )
+    db.add(db_ann)
+    db.commit()
+    db.refresh(db_ann)
+    return db_ann
+
+@app.get("/annotations/", response_model=List[schemas.AnnotationResponse])
+def list_annotations(db: Session = Depends(get_db)):
+    return db.query(models.MapAnnotation).order_by(models.MapAnnotation.created_at.desc()).all()
 
 @app.get("/incidents/{incident_id}/comments/", response_model=List[schemas.CommentResponse])
 def read_comments(incident_id: int, db: Session = Depends(get_db)):

@@ -137,6 +137,7 @@ class Incident(Base):
     suggested_agencies = Column(String, nullable=True)  # store as comma-separated for simplicity
     suggested_unit_type = Column(String, nullable=True)
     routing_rationale = Column(String, nullable=True)
+    mission_id = Column(Integer, ForeignKey("mission_threads.id"), nullable=True)
     
     # Relationships
     reporter = relationship("User", back_populates="reports")
@@ -200,3 +201,29 @@ class Comment(Base):
 
 # Update Incident relationship
 Incident.comments = relationship("Comment", back_populates="incident", order_by="desc(Comment.created_at)")
+
+
+class MissionThread(Base):
+    __tablename__ = "mission_threads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    status = Column(String, default="active")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    incidents = relationship("Incident", backref="mission")
+
+
+class MapAnnotation(Base):
+    __tablename__ = "map_annotations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    annotation_type = Column(String, nullable=False)  # roadblock, safe_zone, staging_area
+    label = Column(String, nullable=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    radius_m = Column(Float, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    mission_id = Column(Integer, ForeignKey("mission_threads.id"), nullable=True)

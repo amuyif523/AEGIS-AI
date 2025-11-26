@@ -86,6 +86,7 @@ class IncidentResponse(IncidentBase):
     suggested_agencies: Optional[list[str]] = None
     suggested_unit_type: Optional[str] = None
     routing_rationale: Optional[str] = None
+    mission_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -103,6 +104,43 @@ class AttachmentResponse(AttachmentBase):
     id: int
     incident_id: int
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- Mission Schemas ---
+class MissionBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    status: Optional[str] = "active"
+
+class MissionCreate(MissionBase):
+    incident_ids: Optional[list[int]] = []
+
+class MissionResponse(MissionBase):
+    id: int
+    created_at: datetime
+    created_by_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Annotation Schemas ---
+class AnnotationBase(BaseModel):
+    annotation_type: str
+    label: Optional[str] = None
+    latitude: float
+    longitude: float
+    radius_m: Optional[float] = None
+    mission_id: Optional[int] = None
+
+class AnnotationCreate(AnnotationBase):
+    pass
+
+class AnnotationResponse(AnnotationBase):
+    id: int
+    created_at: datetime
+    created_by_id: Optional[int] = None
 
     class Config:
         from_attributes = True

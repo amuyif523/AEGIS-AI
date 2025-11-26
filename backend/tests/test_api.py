@@ -273,3 +273,52 @@ def test_command_overview_and_proximity_alert_creation(client):
         headers={"Authorization": f"Bearer {token}"}
     )
     assert alert_resp.status_code == 200
+
+
+def test_mission_and_annotation_flow(client):
+    db = next(get_db())
+    admin = create_user(db, "missionadmin", models.UserRole.SYS_ADMIN)
+    token_resp = client.post(
+        "/token",
+        data={"username": admin.username, "password": "testpass"},
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+    token = token_resp.json()["access_token"]
+
+    inc_resp = client.post(
+        "/incidents/",
+        json={
+            "title": "Mission Incident",
+            "description": "Test mission",
+            "latitude": 2.0,
+            "longitude": 2.0,
+            "incident_type": models.IncidentType.CRIME.value,
+            "severity": models.IncidentSeverity.MEDIUM.value,
+        },
+    )
+    inc_id = inc_resp.json()["id"]
+
+    mission_resp = client.post(
+        "/missions/",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"title": "Op Alpha", "description": "Test", "incident_ids": [inc_id]}
+    )
+    assert mission_resp.status_code == 200
+    mission_id = mission_resp.json()["id"]
+
+    ann_resp = client.post(
+        "/annotations/",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "annotation_type": "roadblock",
+            "label": "Checkpoint",
+            "latitude": 2.0,
+            "longitude": 2.0,
+            "radius_m": 100,
+            "mission_id": mission_id
+        }
+    )
+    assert ann_resp.status_code == 200
+    list_ann = client.get("/annotations/")
+    assert list_ann.status_code == 200
+    assert len(list_ann.json()) >= 1
