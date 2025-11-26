@@ -151,6 +151,10 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
       return saved ? JSON.parse(saved) : [];
   });
   const [showAlertsDropdown, setShowAlertsDropdown] = useState(false);
+  const [incidents, setIncidents] = useState(() => {
+      const saved = localStorage.getItem('dashboard_incidents');
+      return saved ? JSON.parse(saved) : [];
+  });
   
   const { lastMessage, isConnected } = useWebSocket();
 
@@ -183,6 +187,8 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
           };
           setStats(newStats);
           localStorage.setItem('dashboard_stats', JSON.stringify(newStats));
+          setIncidents(data);
+          localStorage.setItem('dashboard_incidents', JSON.stringify(data));
         }
 
         // Fetch Alerts
@@ -221,6 +227,18 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
     return <BootSequence onComplete={() => setShowBootSequence(false)} />;
   }
 
+  const policingIncidents = incidents.filter(i => ['crime','unrest','crowd','suspicious'].includes(i.incident_type));
+  const updateIncidentStatus = async (id, status) => {
+    if (!token) return;
+    const resp = await fetch(`http://localhost:8000/incidents/${id}?status=${status}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (resp.ok) {
+      fetchData();
+    }
+  };
+
   return (
     <div className="flex h-screen bg-[#0D1117] text-white overflow-hidden">
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
@@ -246,6 +264,15 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
           
           {token && (
             <>
+              {(userRole === 'police' || userRole === 'military_analyst') && (
+                <button 
+                  onClick={() => setActiveTab('policing')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded transition-colors ${activeTab === 'policing' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
+                >
+                  <Shield className="w-5 h-5" />
+                  <span className="font-medium">Policing Console</span>
+                </button>
+              )}
               <button 
                 onClick={() => setActiveTab('units')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded transition-colors ${activeTab === 'units' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
@@ -279,7 +306,7 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
             <HelpCircle className="w-5 h-5" />
             <span className="font-medium">System Manual</span>
           </button>
-        </nav>
+      </nav>
 
         <div className="p-4 border-t border-slate-800">
           <div className="bg-slate-800/50 rounded p-3 mb-4">
@@ -369,7 +396,7 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
 
         {/* Map View */}
         <div className="flex-1 relative">
-          <MapComponent adminMode={userRole && userRole !== 'citizen'} token={token} />
+          <MapComponent adminMode={userRole && userRole !== 'citizen'} token={token} defaultTypeFilter={activeTab === 'policing' ? 'crime' : 'all'} />
           
           {/* Overlay for "Broadcast" tab (Mock) */}
           {activeTab === 'broadcast' && (
@@ -393,6 +420,46 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
                 <textarea name="message" className="w-full bg-[#0A0F1A] border border-slate-700 rounded p-2 text-sm text-white mb-3" rows="3" placeholder="Message..."></textarea>
                 <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded text-sm">SEND ALERT</button>
               </form>
+            </div>
+          )}
+
+          {/* Overlay for "Policing" tab */}
+          {activeTab === 'policing' && (
+            <div className="absolute top-4 left-4 z-[1000] bg-[#161B22] border border-blue-700 p-4 rounded shadow-xl w-96 max-h-[80vh] overflow-y-auto">
+              <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-400" />
+                Policing Queue (Crime/Unrest/Crowd)
+              </h3>
+              {policingIncidents.length === 0 ? (
+                <div className="text-xs text-slate-500">No policing incidents.</div>
+              ) : policingIncidents.map(inc => (
+                <div key={inc.id} className="border border-slate-800 rounded p-3 mb-2 bg-[#0A0F1A]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-900/40 text-blue-300 uppercase">{inc.incident_type}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded ${
+                      inc.severity === 'critical' ? 'bg-red-900/50 text-red-300' :
+                      inc.severity === 'high' ? 'bg-amber-900/50 text-amber-300' :
+                      'bg-emerald-900/40 text-emerald-200'
+                    }`}>{inc.severity.toUpperCase()}</span>
+                  </div>
+                  <div className="text-sm font-bold mt-1">{inc.title}</div>
+                  <div className="text-[11px] text-slate-400">{inc.description}</div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => updateIncidentStatus(inc.id, 'dispatched')}
+                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] py-1 rounded"
+                    >
+                      Dispatch
+                    </button>
+                    <button
+                      onClick={() => updateIncidentStatus(inc.id, 'resolved')}
+                      className="flex-1 bg-green-600 hover:bg-green-500 text-white text-[11px] py-1 rounded"
+                    >
+                      Resolve
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, Polyline, Rectangle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useWebSocket } from '../contexts/WebSocketContext';
@@ -90,7 +90,7 @@ const CommentSection = ({ incidentId, token }) => {
   );
 };
 
-const MapComponent = ({ adminMode = false, token = null }) => {
+const MapComponent = ({ adminMode = false, token = null, defaultTypeFilter = 'all' }) => {
   const position = [9.005401, 38.763611]; // Addis Ababa
   const [incidents, setIncidents] = useState(() => {
       const saved = localStorage.getItem('incidents');
@@ -106,10 +106,14 @@ const MapComponent = ({ adminMode = false, token = null }) => {
   const [isOffline, setIsOffline] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false); // Mock Heatmap Toggle
   const [severityFilter, setSeverityFilter] = useState(['critical', 'high', 'medium', 'low']);
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState(defaultTypeFilter);
   const [radiusKm, setRadiusKm] = useState(0); // 0 disables buffer
   const [timelineHours, setTimelineHours] = useState(72); // last 72h default
   const { lastMessage } = useWebSocket();
+
+  useEffect(() => {
+    setTypeFilter(defaultTypeFilter);
+  }, [defaultTypeFilter]);
 
   // Fetch incidents from Backend API
   const fetchIncidents = useCallback(async () => {
@@ -353,6 +357,15 @@ const MapComponent = ({ adminMode = false, token = null }) => {
         ))}
         {layers?.road_network?.map((r, idx) => (
           <Polyline key={`road-${idx}`} positions={r.coords.map(([lng, lat]) => [lat, lng])} pathOptions={{ color: 'gray' }} />
+        ))}
+        {layers?.police_districts?.map((d, idx) => (
+          <Rectangle
+            key={`pd-${idx}`}
+            bounds={[[d.bbox[1], d.bbox[0]], [d.bbox[3], d.bbox[2]]]}
+            pathOptions={{ color: '#38bdf8', weight: 1, fillOpacity: 0.02 }}
+          >
+            <Popup>Police District: {d.name}</Popup>
+          </Rectangle>
         ))}
 
         {filteredIncidents.map((incident) => (
