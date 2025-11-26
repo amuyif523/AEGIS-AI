@@ -228,6 +228,12 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
   }
 
   const policingIncidents = incidents.filter(i => ['crime','unrest','crowd','suspicious'].includes(i.incident_type));
+  const safetyIncidents = {
+    medical: incidents.filter(i => ['medical','accident'].includes(i.incident_type)),
+    fire: incidents.filter(i => i.incident_type === 'fire'),
+    traffic: incidents.filter(i => i.incident_type === 'accident' || i.incident_type === 'infrastructure'),
+    disaster: incidents.filter(i => ['flood','hazard','infrastructure'].includes(i.incident_type)),
+  };
   const updateIncidentStatus = async (id, status) => {
     if (!token) return;
     const resp = await fetch(`http://localhost:8000/incidents/${id}?status=${status}`, {
@@ -271,6 +277,15 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
                 >
                   <Shield className="w-5 h-5" />
                   <span className="font-medium">Policing Console</span>
+                </button>
+              )}
+              {(userRole === 'medical' || userRole === 'fire' || userRole === 'traffic' || userRole === 'disaster_coordinator') && (
+                <button 
+                  onClick={() => setActiveTab('safety')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded transition-colors ${activeTab === 'safety' ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
+                >
+                  <Activity className="w-5 h-5" />
+                  <span className="font-medium">Safety & Disaster</span>
                 </button>
               )}
               <button 
@@ -396,7 +411,18 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
 
         {/* Map View */}
         <div className="flex-1 relative">
-          <MapComponent adminMode={userRole && userRole !== 'citizen'} token={token} defaultTypeFilter={activeTab === 'policing' ? 'crime' : 'all'} />
+          <MapComponent 
+            adminMode={userRole && userRole !== 'citizen'} 
+            token={token} 
+            defaultTypeFilter={
+              activeTab === 'policing' ? 'crime' :
+              activeTab === 'safety' && userRole === 'medical' ? 'medical' :
+              activeTab === 'safety' && userRole === 'fire' ? 'fire' :
+              activeTab === 'safety' && userRole === 'traffic' ? 'accident' :
+              activeTab === 'safety' && userRole === 'disaster_coordinator' ? 'flood' :
+              'all'
+            } 
+          />
           
           {/* Overlay for "Broadcast" tab (Mock) */}
           {activeTab === 'broadcast' && (
@@ -460,6 +486,109 @@ const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Overlay for "Safety" tab */}
+          {activeTab === 'safety' && (
+            <div className="absolute top-4 left-4 z-[1000] bg-[#161B22] border border-green-700 p-4 rounded shadow-xl w-[30rem] max-h-[80vh] overflow-y-auto">
+              <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-green-400" />
+                Safety & Disaster Console
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-300">
+                <div className="bg-[#0A0F1A] border border-slate-800 rounded p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-red-400" />
+                    <span className="font-bold text-white">Medical Queue</span>
+                  </div>
+                  {safetyIncidents.medical.length === 0 ? <div className="text-slate-500">No medical incidents.</div> :
+                    safetyIncidents.medical.map(inc => (
+                      <div key={inc.id} className="border border-slate-800 rounded p-2 mb-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-red-300 uppercase">{inc.incident_type}</span>
+                          <span className="text-[10px] text-slate-500">{(inc.distance_km || '').toString()}</span>
+                        </div>
+                        <div className="text-sm font-bold">{inc.title}</div>
+                        <div className="text-[11px] text-slate-400">{inc.description}</div>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => updateIncidentStatus(inc.id, 'dispatched')} className="flex-1 bg-blue-600 text-white text-[11px] py-1 rounded">Dispatch Ambulance</button>
+                          <button onClick={() => updateIncidentStatus(inc.id, 'resolved')} className="flex-1 bg-green-600 text-white text-[11px] py-1 rounded">Resolve</button>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+
+                <div className="bg-[#0A0F1A] border border-slate-800 rounded p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-orange-400" />
+                    <span className="font-bold text-white">Fire Queue</span>
+                  </div>
+                  {safetyIncidents.fire.length === 0 ? <div className="text-slate-500">No fire incidents.</div> :
+                    safetyIncidents.fire.map(inc => (
+                      <div key={inc.id} className="border border-slate-800 rounded p-2 mb-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-orange-300 uppercase">{inc.incident_type}</span>
+                          <span className="text-[10px] text-slate-500">Spread: {Math.round((inc.spread_risk || 0)*100)}%</span>
+                        </div>
+                        <div className="text-sm font-bold">{inc.title}</div>
+                        <div className="text-[11px] text-slate-400">{inc.description}</div>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => updateIncidentStatus(inc.id, 'dispatched')} className="flex-1 bg-orange-600 text-white text-[11px] py-1 rounded">Dispatch Engine</button>
+                          <button onClick={() => updateIncidentStatus(inc.id, 'resolved')} className="flex-1 bg-green-600 text-white text-[11px] py-1 rounded">Resolve</button>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+
+                <div className="bg-[#0A0F1A] border border-slate-800 rounded p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-yellow-300" />
+                    <span className="font-bold text-white">Traffic Queue</span>
+                  </div>
+                  {safetyIncidents.traffic.length === 0 ? <div className="text-slate-500">No traffic incidents.</div> :
+                    safetyIncidents.traffic.map(inc => (
+                      <div key={inc.id} className="border border-slate-800 rounded p-2 mb-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-yellow-200 uppercase">{inc.incident_type}</span>
+                          <span className="text-[10px] text-slate-500">Impact: {inc.status}</span>
+                        </div>
+                        <div className="text-sm font-bold">{inc.title}</div>
+                        <div className="text-[11px] text-slate-400">{inc.description}</div>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => updateIncidentStatus(inc.id, 'dispatched')} className="flex-1 bg-yellow-600 text-white text-[11px] py-1 rounded">Deploy Traffic</button>
+                          <button onClick={() => updateIncidentStatus(inc.id, 'resolved')} className="flex-1 bg-green-600 text-white text-[11px] py-1 rounded">Clear</button>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+
+                <div className="bg-[#0A0F1A] border border-slate-800 rounded p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-4 h-4 text-cyan-300" />
+                    <span className="font-bold text-white">Disaster Queue</span>
+                  </div>
+                  {safetyIncidents.disaster.length === 0 ? <div className="text-slate-500">No disaster incidents.</div> :
+                    safetyIncidents.disaster.map(inc => (
+                      <div key={inc.id} className="border border-slate-800 rounded p-2 mb-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-cyan-200 uppercase">{inc.incident_type}</span>
+                          <span className="text-[10px] text-slate-500">Risk: {Math.round((inc.spatial_risk_index || 0)*100)}%</span>
+                        </div>
+                        <div className="text-sm font-bold">{inc.title}</div>
+                        <div className="text-[11px] text-slate-400">{inc.description}</div>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => updateIncidentStatus(inc.id, 'dispatched')} className="flex-1 bg-cyan-600 text-white text-[11px] py-1 rounded">Deploy Team</button>
+                          <button onClick={() => updateIncidentStatus(inc.id, 'resolved')} className="flex-1 bg-green-600 text-white text-[11px] py-1 rounded">Resolve</button>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
             </div>
           )}
 
