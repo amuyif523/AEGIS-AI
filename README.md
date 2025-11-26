@@ -66,6 +66,7 @@ npm run dev
 - Routing: suggested_agencies, suggested_unit_type, routing_rationale populated from triage.
 - GIS queries: `/incidents/near` (radius km) and `/incidents/bbox`; geometry stored for Postgres with spatial index; static base layers at `/layers/base`.
 - Frontend map: severity/type filters, timeline slider, optional heatmap circles, proximity radius overlay, cached incidents/layers, base layer markers (hospitals/hydrants/infra/roads).
+- Routing/Proximity: `/routing/nearest_unit` (idle units by distance/ETA) and `/routing/proximity_alerts` (high-severity incidents within radius with recommended action); spatial_risk_index captured per incident.
 
 ## Testing
 - Backend: `cd backend && pytest`

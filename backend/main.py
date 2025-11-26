@@ -14,6 +14,8 @@ from .rbac import admin_roles, dispatcher_roles, require_roles
 from .layers import BASE_LAYERS
 from .database import SQLALCHEMY_DATABASE_URL
 from .routing import suggest_agencies, suggest_unit_type, build_routing_rationale
+from math import radians, sin, cos, sqrt, atan2
+from .routers import routing as routing_router
 
 settings = get_settings()
 logging.basicConfig(
@@ -30,6 +32,7 @@ app = FastAPI(
     description="Real-time geospatial incident management and AI triage system.",
     version="1.0.0"
 )
+app.include_router(routing_router.router)
 
 # --- WebSocket Manager ---
 class ConnectionManager:
@@ -219,6 +222,12 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
     incident_data['spread_risk'] = ai_result.get('spread_risk', 0.0)
     incident_data['casualty_likelihood'] = ai_result.get('casualty_likelihood', 0.0)
     incident_data['crowd_size_estimate'] = ai_result.get('crowd_size_estimate', 0)
+    # Simple spatial risk index heuristic
+    incident_data['spatial_risk_index'] = (
+        0.4 * (incident_data['escalation_probability'] or 0)
+        + 0.3 * (incident_data['spread_risk'] or 0)
+        + 0.3 * (incident_data['casualty_likelihood'] or 0)
+    )
 
     # Routing suggestions
     suggested_roles = suggest_agencies(incident_data['incident_type'], incident_data['severity'])

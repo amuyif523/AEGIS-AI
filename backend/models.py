@@ -125,6 +125,7 @@ class Incident(Base):
     spread_risk = Column(Float, nullable=True)
     casualty_likelihood = Column(Float, nullable=True)
     crowd_size_estimate = Column(Integer, nullable=True)
+    spatial_risk_index = Column(Float, nullable=True)
     
     # Foreign Keys
     reporter_id = Column(Integer, ForeignKey("users.id"))

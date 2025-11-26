@@ -202,3 +202,39 @@ def test_bbox_and_near_queries(client):
     near_resp = client.get("/incidents/near?lat=1&lng=1&radius_km=50")
     assert near_resp.status_code == 200
     assert len(near_resp.json()) >= 1
+
+
+def test_nearest_unit_and_proximity_alerts(client):
+    db = next(get_db())
+    u = models.Unit(
+        callsign="TEST-UNIT",
+        unit_type=models.UserRole.MEDICAL,
+        status=models.UnitStatus.IDLE,
+        latitude=1.0,
+        longitude=1.0,
+    )
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+
+    incident_resp = client.post(
+        "/incidents/",
+        json={
+            "title": "Critical Medical",
+            "description": "Severe injury",
+            "latitude": 1.0,
+            "longitude": 1.0,
+            "incident_type": models.IncidentType.MEDICAL.value,
+            "severity": models.IncidentSeverity.CRITICAL.value,
+        },
+    )
+    assert incident_resp.status_code == 200
+
+    prox = client.get("/routing/proximity_alerts?lat=1&lng=1&radius_km=1")
+    assert prox.status_code == 200
+    assert len(prox.json()) >= 1
+
+    nearest = client.get("/routing/nearest_unit?lat=1&lng=1&unit_type=medical")
+    assert nearest.status_code == 200
+    body = nearest.json()
+    assert body["unit_id"] == u.id

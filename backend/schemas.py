@@ -62,6 +62,7 @@ class IncidentBase(BaseModel):
     spread_risk: Optional[float] = 0.0
     casualty_likelihood: Optional[float] = 0.0
     crowd_size_estimate: Optional[int] = 0
+    spatial_risk_index: Optional[float] = 0.0
 
 class IncidentCreate(IncidentBase):
     pass
