@@ -112,6 +112,11 @@ class AlertBase(BaseModel):
     title: str
     message: str
     severity: IncidentSeverity
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    radius_km: Optional[float] = None
+    recommended_action: Optional[str] = None
+    audience: Optional[str] = None
 
 class AlertCreate(AlertBase):
     incident_id: int

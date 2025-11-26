@@ -238,3 +238,38 @@ def test_nearest_unit_and_proximity_alerts(client):
     assert nearest.status_code == 200
     body = nearest.json()
     assert body["unit_id"] == u.id
+
+
+def test_command_overview_and_proximity_alert_creation(client):
+    db = next(get_db())
+    admin = create_user(db, "cmdadmin", models.UserRole.SYS_ADMIN)
+    token_resp = client.post(
+        "/token",
+        data={"username": admin.username, "password": "testpass"},
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+    token = token_resp.json()["access_token"]
+
+    inc_resp = client.post(
+        "/incidents/",
+        json={
+            "title": "Critical Flood",
+            "description": "Flooding area",
+            "latitude": 5.0,
+            "longitude": 5.0,
+            "incident_type": models.IncidentType.FLOOD.value,
+            "severity": models.IncidentSeverity.CRITICAL.value,
+        },
+    )
+    incident_id = inc_resp.json()["id"]
+
+    overview = client.get("/command/overview")
+    assert overview.status_code == 200
+    assert overview.json()["total_incidents"] >= 1
+
+    alert_resp = client.post(
+        "/alerts/proximity",
+        params={"incident_id": incident_id, "radius_km": 1},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert alert_resp.status_code == 200

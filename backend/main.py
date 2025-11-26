@@ -13,6 +13,7 @@ from .config import get_settings
 from .rbac import admin_roles, dispatcher_roles, require_roles
 from .layers import BASE_LAYERS
 from .database import SQLALCHEMY_DATABASE_URL
+from .routing import haversine
 from .routing import suggest_agencies, suggest_unit_type, build_routing_rationale
 from math import radians, sin, cos, sqrt, atan2
 from .routers import routing as routing_router
@@ -457,6 +458,44 @@ def create_alert(alert: schemas.AlertCreate, background_tasks: BackgroundTasks, 
     background_tasks.add_task(manager.broadcast, "refresh_alerts")
     return db_alert
 
+@app.post("/alerts/proximity", response_model=schemas.AlertResponse)
+def create_proximity_alert(incident_id: int = None, lat: float = None, lng: float = None, radius_km: float = 2.0, recommended_action: str = "Avoid area", background_tasks: BackgroundTasks = None, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.role not in admin_roles:
+        raise HTTPException(status_code=403, detail="Not authorized to broadcast alerts")
+    if incident_id:
+        incident = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
+        if not incident:
+            raise HTTPException(status_code=404, detail="Incident not found")
+        lat = incident.latitude
+        lng = incident.longitude
+        severity = incident.severity
+        title = f"Proximity Alert: {incident.incident_type.value}"
+        message = incident.description
+    else:
+        if lat is None or lng is None:
+            raise HTTPException(status_code=400, detail="lat/lng required if no incident_id")
+        severity = models.IncidentSeverity.MEDIUM
+        title = "Proximity Alert"
+        message = "Geofenced alert"
+
+    db_alert = models.Alert(
+        title=title,
+        message=message,
+        severity=severity,
+        incident_id=incident_id,
+        latitude=lat,
+        longitude=lng,
+        radius_km=radius_km,
+        recommended_action=recommended_action,
+        audience="citizen"
+    )
+    db.add(db_alert)
+    db.commit()
+    db.refresh(db_alert)
+    if background_tasks:
+        background_tasks.add_task(manager.broadcast, "refresh_alerts")
+    return db_alert
+
 # --- Comment Endpoints ---
 
 @app.post("/incidents/{incident_id}/comments/", response_model=schemas.CommentResponse)
@@ -529,3 +568,23 @@ def health_check(db: Session = Depends(get_db)):
 @app.get("/layers/base")
 def base_layers():
     return BASE_LAYERS
+
+@app.get("/command/overview")
+def command_overview(db: Session = Depends(get_db)):
+    total_incidents = db.query(models.Incident).count()
+    high_critical = db.query(models.Incident).filter(models.Incident.severity.in_([models.IncidentSeverity.HIGH, models.IncidentSeverity.CRITICAL])).count()
+    by_type = db.query(models.Incident.incident_type, func.count(models.Incident.id)).group_by(models.Incident.incident_type).all()
+    by_agency = {}
+    incidents = db.query(models.Incident).all()
+    for inc in incidents:
+        agencies = inc.suggested_agencies.split(",") if inc.suggested_agencies else []
+        for ag in agencies:
+            by_agency[ag] = by_agency.get(ag, 0) + 1
+    escalated = [i for i in incidents if i.severity in [models.IncidentSeverity.HIGH, models.IncidentSeverity.CRITICAL]]
+    return {
+        "total_incidents": total_incidents,
+        "high_critical": high_critical,
+        "by_type": {t.value: count for t, count in by_type},
+        "by_agency": by_agency,
+        "escalated": [{"id": i.id, "title": i.title, "severity": i.severity, "type": i.incident_type} for i in escalated],
+    }

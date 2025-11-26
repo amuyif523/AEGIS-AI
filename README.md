@@ -68,6 +68,7 @@ npm run dev
 - Frontend map: severity/type filters, timeline slider, optional heatmap circles, proximity radius overlay, cached incidents/layers, base layer markers (hospitals/hydrants/infra/roads).
 - Routing/Proximity: `/routing/nearest_unit` (idle units by distance/ETA) and `/routing/proximity_alerts` (high-severity incidents within radius with recommended action); spatial_risk_index captured per incident.
 - Policing console: role-based tab with crime/unrest/crowd queues and dispatch/resolve actions; map defaults to policing filter and shows police districts overlay.
+- Command & alerts: `/command/overview` for consolidated status; alerts support geo-targeting fields; proximity alert creation at `/alerts/proximity` for incident/lat-lng radius.
 
 ## Testing
 - Backend: `cd backend && pytest`

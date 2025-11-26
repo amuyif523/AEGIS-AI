@@ -169,6 +169,11 @@ class Alert(Base):
     message = Column(String)
     severity = Column(Enum(IncidentSeverity), default=IncidentSeverity.LOW)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    radius_km = Column(Float, nullable=True)
+    recommended_action = Column(String, nullable=True)
+    audience = Column(String, nullable=True)
     
     # Link to the incident that triggered it
     incident_id = Column(Integer, ForeignKey("incidents.id"))
