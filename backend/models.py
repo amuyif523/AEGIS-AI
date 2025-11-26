@@ -129,6 +129,9 @@ class Incident(Base):
     dispatched_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     resolved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     flagged_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    suggested_agencies = Column(String, nullable=True)  # store as comma-separated for simplicity
+    suggested_unit_type = Column(String, nullable=True)
+    routing_rationale = Column(String, nullable=True)
     
     # Relationships
     reporter = relationship("User", back_populates="reports")

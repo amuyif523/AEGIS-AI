@@ -82,6 +82,9 @@ class IncidentResponse(IncidentBase):
     flagged_by_id: Optional[int] = None
     duplicate_of_id: Optional[int] = None
     potential_duplicate_id: Optional[int] = None
+    suggested_agencies: Optional[list[str]] = None
+    suggested_unit_type: Optional[str] = None
+    routing_rationale: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -11,6 +11,7 @@ from . import models, schemas, database, auth
 from .ai_engine import ai_engine
 from .config import get_settings
 from .rbac import admin_roles, dispatcher_roles, require_roles
+from .routing import suggest_agencies, suggest_unit_type, build_routing_rationale
 
 settings = get_settings()
 logging.basicConfig(
@@ -216,7 +217,13 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
     incident_data['spread_risk'] = ai_result.get('spread_risk', 0.0)
     incident_data['casualty_likelihood'] = ai_result.get('casualty_likelihood', 0.0)
     incident_data['crowd_size_estimate'] = ai_result.get('crowd_size_estimate', 0)
-    
+
+    # Routing suggestions
+    suggested_roles = suggest_agencies(incident_data['incident_type'], incident_data['severity'])
+    suggested_unit = suggest_unit_type(incident_data['incident_type'])
+    incident_data['suggested_agencies'] = [r.value for r in suggested_roles]
+    incident_data['suggested_unit_type'] = suggested_unit.value
+
     # Apply AI Type if the user selected "Other" or if we want to auto-classify
     # For now, let's prioritize the AI's classification if it found something specific
     if ai_result['incident_type'] != models.IncidentType.OTHER:
@@ -247,6 +254,7 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
         reporter_id=reporter_id,
         status=models.IncidentStatus.PENDING
     )
+    db_incident.routing_rationale = build_routing_rationale(db_incident, suggested_roles, suggested_unit)
     db.add(db_incident)
     db.commit()
     db.refresh(db_incident)

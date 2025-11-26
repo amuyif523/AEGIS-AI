@@ -48,6 +48,8 @@ def test_incident_lifecycle(client):
     assert "escalation_probability" in incident
     assert "spread_risk" in incident
     assert "casualty_likelihood" in incident
+    assert "suggested_agencies" in incident
+    assert "suggested_unit_type" in incident
 
     # Listing incidents returns the new one
     list_resp = client.get("/incidents/")

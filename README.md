@@ -63,6 +63,7 @@ npm run dev
 - Audit: reporter_id, verified/dispatched/resolved timestamps and by-user IDs, assigned_unit_id, flagged_by.
 - Workflow: pending → verified → dispatched → resolved/false_alarm (invalid transitions rejected); merge/flag endpoints for verifiers/admins.
 - Attachments: incident attachments with url/media_type/metadata.
+- Routing: suggested_agencies, suggested_unit_type, routing_rationale populated from triage.
 
 ## Testing
 - Backend: `cd backend && pytest`
