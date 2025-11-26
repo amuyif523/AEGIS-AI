@@ -56,6 +56,7 @@ class IncidentBase(BaseModel):
     source: Optional[IncidentSource] = IncidentSource.CITIZEN
     media_url: Optional[str] = None
     media_type: Optional[str] = None
+    flag_reason: Optional[str] = None
 
 class IncidentCreate(IncidentBase):
     pass
@@ -72,6 +73,27 @@ class IncidentResponse(IncidentBase):
     verified_by_id: Optional[int] = None
     dispatched_by_id: Optional[int] = None
     resolved_by_id: Optional[int] = None
+    flagged: int
+    flagged_by_id: Optional[int] = None
+    duplicate_of_id: Optional[int] = None
+    potential_duplicate_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Attachment Schemas ---
+class AttachmentBase(BaseModel):
+    url: str
+    media_type: Optional[str] = None
+    metadata: Optional[str] = None
+
+class AttachmentCreate(AttachmentBase):
+    pass
+
+class AttachmentResponse(AttachmentBase):
+    id: int
+    incident_id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True

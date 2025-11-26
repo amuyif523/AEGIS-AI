@@ -105,6 +105,10 @@ class Incident(Base):
     source = Column(Enum(IncidentSource), default=IncidentSource.CITIZEN)
     media_url = Column(String, nullable=True)
     media_type = Column(String, nullable=True)
+    flagged = Column(Integer, default=0)  # 0/1 boolean-ish for SQLite portability
+    flag_reason = Column(String, nullable=True)
+    duplicate_of_id = Column(Integer, ForeignKey("incidents.id"), nullable=True)
+    potential_duplicate_id = Column(Integer, ForeignKey("incidents.id"), nullable=True)
     
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -119,6 +123,7 @@ class Incident(Base):
     verified_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     dispatched_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     resolved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    flagged_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     reporter = relationship("User", back_populates="reports")
@@ -126,6 +131,22 @@ class Incident(Base):
     verified_by = relationship("User", foreign_keys=[verified_by_id])
     dispatched_by = relationship("User", foreign_keys=[dispatched_by_id])
     resolved_by = relationship("User", foreign_keys=[resolved_by_id])
+    flagged_by = relationship("User", foreign_keys=[flagged_by_id])
+    duplicate_of = relationship("Incident", remote_side=[id], foreign_keys=[duplicate_of_id], uselist=False)
+    potential_duplicate = relationship("Incident", remote_side=[id], foreign_keys=[potential_duplicate_id], uselist=False)
+
+
+class IncidentAttachment(Base):
+    __tablename__ = "incident_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    incident_id = Column(Integer, ForeignKey("incidents.id"), nullable=False)
+    url = Column(String, nullable=False)
+    media_type = Column(String, nullable=True)
+    metadata = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    incident = relationship("Incident", backref="attachments")
 
 class Alert(Base):
     __tablename__ = "alerts"

@@ -130,3 +130,35 @@ def test_status_transition_audit(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert back_resp.status_code == 400
+
+
+def test_dedup_sets_potential_duplicate(client):
+    # Create first incident
+    first_resp = client.post(
+        "/incidents/",
+        json={
+            "title": "Same Title",
+            "description": "Smoke visible",
+            "latitude": 1.0,
+            "longitude": 1.0,
+            "incident_type": models.IncidentType.FIRE.value,
+            "severity": models.IncidentSeverity.MEDIUM.value,
+        },
+    )
+    first_id = first_resp.json()["id"]
+
+    # Create second nearby with same title
+    second_resp = client.post(
+        "/incidents/",
+        json={
+            "title": "Same Title",
+            "description": "Another report",
+            "latitude": 1.0001,
+            "longitude": 1.0001,
+            "incident_type": models.IncidentType.FIRE.value,
+            "severity": models.IncidentSeverity.MEDIUM.value,
+        },
+    )
+    assert second_resp.status_code == 200
+    body = second_resp.json()
+    assert body["potential_duplicate_id"] == first_id

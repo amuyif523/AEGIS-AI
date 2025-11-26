@@ -34,4 +34,5 @@ dispatcher_roles: List[models.UserRole] = admin_roles + [
     models.UserRole.TRAFFIC,
     models.UserRole.DISASTER,
     models.UserRole.MILITARY,
+    models.UserRole.VERIFIER,
 ]

@@ -219,6 +219,24 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
 
     incident_data["source"] = source
 
+    # --- Basic deduping: find recent incidents within ~0.5 km with similar title ---
+    def nearby_duplicates():
+        candidates = db.query(models.Incident).filter(
+            models.Incident.created_at >= datetime.utcnow() - timedelta(hours=2)
+        ).all()
+        for cand in candidates:
+            # Rough distance calc (not accurate for production; placeholder)
+            dx = cand.latitude - incident.latitude
+            dy = cand.longitude - incident.longitude
+            dist = (dx * dx + dy * dy) ** 0.5
+            if dist < 0.005 and cand.title.lower() == incident.title.lower():
+                return cand
+        return None
+
+    potential_dup = nearby_duplicates()
+    if potential_dup:
+        incident_data["potential_duplicate_id"] = potential_dup.id
+
     db_incident = models.Incident(
         **incident_data,
         reporter_id=reporter_id,
@@ -329,6 +347,36 @@ def update_incident_status(incident_id: int, status: models.IncidentStatus, back
     background_tasks.add_task(manager.broadcast, "refresh_units")
     return incident
 
+@app.post("/incidents/{incident_id}/flag", response_model=schemas.IncidentResponse)
+def flag_incident(incident_id: int, reason: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.role not in admin_roles + [models.UserRole.VERIFIER]:
+        raise HTTPException(status_code=403, detail="Not authorized to flag incidents")
+    incident = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    incident.flagged = 1
+    incident.flag_reason = reason
+    incident.flagged_by_id = current_user.id
+    db.commit()
+    db.refresh(incident)
+    return incident
+
+@app.post("/incidents/{incident_id}/merge", response_model=schemas.IncidentResponse)
+def merge_incident(incident_id: int, target_incident_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.role not in admin_roles + [models.UserRole.VERIFIER]:
+        raise HTTPException(status_code=403, detail="Not authorized to merge incidents")
+    if incident_id == target_incident_id:
+        raise HTTPException(status_code=400, detail="Cannot merge incident into itself")
+    incident = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
+    target = db.query(models.Incident).filter(models.Incident.id == target_incident_id).first()
+    if not incident or not target:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    incident.duplicate_of_id = target.id
+    incident.status = models.IncidentStatus.FALSE_ALARM
+    db.commit()
+    db.refresh(incident)
+    return incident
+
 @app.get("/alerts/", response_model=List[schemas.AlertResponse])
 def read_alerts(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
     alerts = db.query(models.Alert).order_by(models.Alert.created_at.desc()).offset(skip).limit(limit).all()
@@ -360,6 +408,22 @@ def create_comment(incident_id: int, comment: schemas.CommentCreate, db: Session
     db.commit()
     db.refresh(db_comment)
     return db_comment
+
+@app.post("/incidents/{incident_id}/attachments/", response_model=schemas.AttachmentResponse)
+def create_attachment(incident_id: int, attachment: schemas.AttachmentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    incident = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    db_attach = models.IncidentAttachment(
+        incident_id=incident_id,
+        url=attachment.url,
+        media_type=attachment.media_type,
+        metadata=attachment.metadata
+    )
+    db.add(db_attach)
+    db.commit()
+    db.refresh(db_attach)
+    return db_attach
 
 @app.get("/incidents/{incident_id}/comments/", response_model=List[schemas.CommentResponse])
 def read_comments(incident_id: int, db: Session = Depends(get_db)):
