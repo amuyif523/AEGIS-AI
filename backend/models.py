@@ -38,6 +38,14 @@ class IncidentSeverity(str, enum.Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
+class IncidentSource(str, enum.Enum):
+    CITIZEN = "citizen"
+    RESPONDER = "responder"
+    OPS_CENTER = "ops_center"
+    SENSOR = "sensor"
+    WEATHER = "weather"
+    OTHER = "other"
+
 class IncidentStatus(str, enum.Enum):
     PENDING = "pending"
     VERIFIED = "verified"
@@ -94,18 +102,30 @@ class Incident(Base):
     incident_type = Column(Enum(IncidentType), default=IncidentType.OTHER)
     severity = Column(Enum(IncidentSeverity), default=IncidentSeverity.LOW)
     status = Column(Enum(IncidentStatus), default=IncidentStatus.PENDING)
+    source = Column(Enum(IncidentSource), default=IncidentSource.CITIZEN)
+    media_url = Column(String, nullable=True)
+    media_type = Column(String, nullable=True)
     
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    dispatched_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
     
     # Foreign Keys
     reporter_id = Column(Integer, ForeignKey("users.id"))
     assigned_unit_id = Column(Integer, ForeignKey("units.id"), nullable=True)
+    verified_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    dispatched_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    resolved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     reporter = relationship("User", back_populates="reports")
     assigned_unit = relationship("Unit")
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
+    dispatched_by = relationship("User", foreign_keys=[dispatched_by_id])
+    resolved_by = relationship("User", foreign_keys=[resolved_by_id])
 
 class Alert(Base):
     __tablename__ = "alerts"

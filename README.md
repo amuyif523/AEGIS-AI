@@ -33,7 +33,7 @@ npm install
 cd backend
 alembic upgrade head
 ```
-- Optional seed (dev convenience):
+- Optional seed (dev convenience; creates sys_admin plus core agency users with password `changeme` and sample incidents):
 ```bash
 python -m backend.seed_data
 ```
@@ -57,6 +57,11 @@ npm run dev
 - Core roles: `citizen`, `verifier`, `police`, `medical`, `fire`, `traffic`, `disaster_coordinator`, `military_analyst`, `national_supervisor`, `command` (legacy), `admin` (legacy), `sys_admin`.
 - Admin-capable (user/unit management, alerts): `sys_admin`, `national_supervisor`, `admin`, `command`.
 - Dispatch-capable (incident status/assign): admin-capable plus `police`, `fire`, `medical`, `traffic`, `disaster_coordinator`, `military_analyst`.
+
+## Incident Model (current)
+- Fields: title, description, latitude/longitude, incident_type, severity, status, source, media_url/media_type.
+- Audit: reporter_id, verified/dispatched/resolved timestamps and by-user IDs, assigned_unit_id.
+- Status workflow enforced: pending → verified → dispatched → resolved/false_alarm (invalid transitions rejected).
 
 ## Testing
 - Backend: `cd backend && pytest`

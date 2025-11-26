@@ -41,6 +41,9 @@ def test_incident_lifecycle(client):
     assert incident["status"] == models.IncidentStatus.PENDING.value
     assert incident["incident_type"] in models.IncidentType._value2member_map_
     assert incident["severity"] in models.IncidentSeverity._value2member_map_
+    assert incident["source"] == models.IncidentSource.CITIZEN.value
+    assert incident["verified_by_id"] is None
+    assert incident["resolved_by_id"] is None
 
     # Listing incidents returns the new one
     list_resp = client.get("/incidents/")
@@ -81,3 +84,49 @@ def test_rbac_blocks_dispatch_for_citizen(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert update_resp.status_code == 403
+
+
+def test_status_transition_audit(client):
+    db = next(get_db())
+    admin = create_user(db, "sysadmin1", models.UserRole.SYS_ADMIN)
+    token_resp = client.post(
+        "/token",
+        data={"username": admin.username, "password": "testpass"},
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+    assert token_resp.status_code == 200
+    token = token_resp.json()["access_token"]
+
+    incident_resp = client.post(
+        "/incidents/",
+        json={
+            "title": "Fire Test",
+            "description": "Smoke visible",
+            "latitude": 1.1,
+            "longitude": 2.2,
+            "incident_type": models.IncidentType.FIRE.value,
+            "severity": models.IncidentSeverity.HIGH.value,
+        },
+    )
+    incident_id = incident_resp.json()["id"]
+
+    verify_resp = client.patch(
+        f"/incidents/{incident_id}?status=verified",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert verify_resp.status_code == 200
+    body = verify_resp.json()
+    assert body["verified_by_id"] == admin.id
+    assert body["verified_at"] is not None
+
+    resolve_resp = client.patch(
+        f"/incidents/{incident_id}?status=resolved",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resolve_resp.status_code == 200
+
+    back_resp = client.patch(
+        f"/incidents/{incident_id}?status=pending",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert back_resp.status_code == 400

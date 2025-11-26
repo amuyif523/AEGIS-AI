@@ -16,13 +16,34 @@ def create_admin_user():
                 username="admin",
                 email="admin@aegis.et",
                 hashed_password=hashed_password,
-                role=models.UserRole.COMMAND
+                role=models.UserRole.SYS_ADMIN
             )
             db.add(user)
             db.commit()
             print("Admin user created: username='admin', password='admin123'")
         else:
             print("Admin user already exists.")
+
+        # Seed essential agency roles
+        seed_roles = {
+            "command": models.UserRole.NATIONAL_SUPERVISOR,
+            "police_cmd": models.UserRole.POLICE,
+            "fire_cmd": models.UserRole.FIRE,
+            "medical_cmd": models.UserRole.MEDICAL,
+            "traffic_cmd": models.UserRole.TRAFFIC,
+            "disaster_cmd": models.UserRole.DISASTER,
+            "military_ops": models.UserRole.MILITARY,
+            "verifier": models.UserRole.VERIFIER,
+        }
+        for username, role in seed_roles.items():
+            if not db.query(models.User).filter(models.User.username == username).first():
+                db.add(models.User(
+                    username=username,
+                    email=f"{username}@aegis.et",
+                    hashed_password=auth.get_password_hash("changeme"),
+                    role=role
+                ))
+        db.commit()
 
         # Seed Incidents
         if db.query(models.Incident).count() == 0:

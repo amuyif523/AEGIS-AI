@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from .models import IncidentType, IncidentSeverity, IncidentStatus, UserRole, UnitStatus
+from .models import IncidentType, IncidentSeverity, IncidentStatus, UserRole, UnitStatus, IncidentSource
 
 # --- User Schemas ---
 class UserBase(BaseModel):
@@ -53,6 +53,9 @@ class IncidentBase(BaseModel):
     longitude: float
     incident_type: IncidentType
     severity: Optional[IncidentSeverity] = IncidentSeverity.LOW
+    source: Optional[IncidentSource] = IncidentSource.CITIZEN
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None
 
 class IncidentCreate(IncidentBase):
     pass
@@ -63,6 +66,12 @@ class IncidentResponse(IncidentBase):
     created_at: datetime
     reporter_id: int
     assigned_unit_id: Optional[int] = None
+    verified_at: Optional[datetime] = None
+    dispatched_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    verified_by_id: Optional[int] = None
+    dispatched_by_id: Optional[int] = None
+    resolved_by_id: Optional[int] = None
 
     class Config:
         from_attributes = True

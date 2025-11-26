@@ -133,9 +133,9 @@ const UnitList = ({ token }) => {
   );
 };
 
-const Dashboard = ({ onLogout, token, username }) => {
+const Dashboard = ({ onLogout, token, username, initialRole = null }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [userRole, setUserRole] = useState(null);
+  const [userRole, setUserRole] = useState(initialRole);
   const [showBootSequence, setShowBootSequence] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [stats, setStats] = useState(() => {

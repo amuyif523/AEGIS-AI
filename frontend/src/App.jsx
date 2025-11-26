@@ -18,25 +18,34 @@ const AegisLanding = () => {
   const [view, setView] = useState('landing'); // 'landing' | 'dashboard' | 'login'
   const [token, setToken] = useState(localStorage.getItem('aegis_token'));
   const [username, setUsername] = useState(localStorage.getItem('aegis_user'));
+  const [role, setRole] = useState(localStorage.getItem('aegis_role'));
 
   const handleReportSubmit = (data) => {
     console.log("Report Submitted:", data);
     alert(`Report Submitted!\nType: ${data.type}\nLocation: ${data.location}`);
   };
 
-  const handleLogin = (newToken, newUsername) => {
+  const handleLogin = (newToken, newUsername, newRole) => {
     setToken(newToken);
     setUsername(newUsername);
+    setRole(newRole);
     localStorage.setItem('aegis_token', newToken);
     localStorage.setItem('aegis_user', newUsername);
+    if (newRole) {
+      localStorage.setItem('aegis_role', newRole);
+    } else {
+      localStorage.removeItem('aegis_role');
+    }
     setView('dashboard');
   };
 
   const handleLogout = () => {
     setToken(null);
     setUsername(null);
+    setRole(null);
     localStorage.removeItem('aegis_token');
     localStorage.removeItem('aegis_user');
+    localStorage.removeItem('aegis_role');
     setView('landing');
   };
 
@@ -59,7 +68,7 @@ const AegisLanding = () => {
     // Allow public access (token can be null)
     return (
       <WebSocketProvider clientId={Math.floor(Math.random() * 1000000)}>
-        <Dashboard onLogout={handleLogout} token={token} username={username} />
+        <Dashboard onLogout={handleLogout} token={token} username={username} initialRole={role} />
       </WebSocketProvider>
     );
   }

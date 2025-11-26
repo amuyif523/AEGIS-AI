@@ -30,7 +30,18 @@ const Login = ({ onLogin, onCancel }) => {
       }
 
       const data = await response.json();
-      onLogin(data.access_token, username);
+
+      // Fetch the user's role for tailored access
+      const meRes = await fetch('http://localhost:8000/users/me', {
+        headers: { 'Authorization': `Bearer ${data.access_token}` }
+      });
+      let role = null;
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        role = meData.role;
+      }
+
+      onLogin(data.access_token, username, role);
     } catch (err) {
       setError('Login failed. Please check your username and password.');
     } finally {

@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 from typing import List
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from . import models, schemas, database, auth
 from .ai_engine import ai_engine
@@ -181,6 +181,27 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
             db.refresh(citizen_zero)
         reporter_id = citizen_zero.id
 
+    # Determine source based on caller
+    source = incident.source
+    if current_user:
+        if current_user.role in admin_roles:
+            source = models.IncidentSource.OPS_CENTER
+        elif current_user.role in [
+            models.UserRole.POLICE,
+            models.UserRole.FIRE,
+            models.UserRole.MEDICAL,
+            models.UserRole.TRAFFIC,
+            models.UserRole.DISASTER,
+            models.UserRole.MILITARY,
+        ]:
+            source = models.IncidentSource.RESPONDER
+        elif current_user.role == models.UserRole.VERIFIER:
+            source = models.IncidentSource.OPS_CENTER
+        else:
+            source = models.IncidentSource.CITIZEN
+    else:
+        source = models.IncidentSource.CITIZEN
+
     # --- AI Triage Engine ---
     # Analyze the text to determine severity and type automatically
     ai_result = ai_engine.analyze(f"{incident.title} {incident.description}")
@@ -195,6 +216,8 @@ def create_incident(incident: schemas.IncidentCreate, background_tasks: Backgrou
     # For now, let's prioritize the AI's classification if it found something specific
     if ai_result['incident_type'] != models.IncidentType.OTHER:
         incident_data['incident_type'] = ai_result['incident_type']
+
+    incident_data["source"] = source
 
     db_incident = models.Incident(
         **incident_data,
@@ -237,6 +260,32 @@ def update_incident_status(incident_id: int, status: models.IncidentStatus, back
     incident = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
+
+    allowed_transitions = {
+        models.IncidentStatus.PENDING: [
+            models.IncidentStatus.VERIFIED,
+            models.IncidentStatus.DISPATCHED,
+            models.IncidentStatus.RESOLVED,
+            models.IncidentStatus.FALSE_ALARM,
+        ],
+        models.IncidentStatus.VERIFIED: [
+            models.IncidentStatus.DISPATCHED,
+            models.IncidentStatus.RESOLVED,
+            models.IncidentStatus.FALSE_ALARM,
+        ],
+        models.IncidentStatus.DISPATCHED: [
+            models.IncidentStatus.RESOLVED,
+            models.IncidentStatus.FALSE_ALARM,
+        ],
+        models.IncidentStatus.RESOLVED: [],
+        models.IncidentStatus.FALSE_ALARM: [],
+    }
+
+    if status not in allowed_transitions.get(incident.status, []):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status transition from {incident.status.value} to {status.value}",
+        )
     
     incident.status = status
     
@@ -255,6 +304,17 @@ def update_incident_status(incident_id: int, status: models.IncidentStatus, back
         # If status is DISPATCHED, ensure we save that too
         if status == models.IncidentStatus.DISPATCHED:
             pass # Already set above
+
+    now = datetime.utcnow()
+    if status == models.IncidentStatus.VERIFIED:
+        incident.verified_by_id = current_user.id
+        incident.verified_at = now
+    if status == models.IncidentStatus.DISPATCHED:
+        incident.dispatched_by_id = current_user.id
+        incident.dispatched_at = now
+    if status in [models.IncidentStatus.RESOLVED, models.IncidentStatus.FALSE_ALARM]:
+        incident.resolved_by_id = current_user.id
+        incident.resolved_at = now
 
     # If incident is resolved, free up the unit
     if status == models.IncidentStatus.RESOLVED and incident.assigned_unit_id:
